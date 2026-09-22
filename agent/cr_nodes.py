@@ -230,9 +230,14 @@ def _foreground_pkg(context):
 
 
 def _analyze_battle(frame, tpl):
-    """对战中画面的量化读数：圣水 + 手牌 + 敌塔血量。"""
-    elixir, frac, _left_lit = read_elixir(frame)
-    return Scene(BATTLE, elixir, frac, read_hand(frame, tpl), read_enemy_towers(frame))
+    """对战中画面的量化读数：圣水 + 手牌 + 敌塔血量。
+
+    返回 (Scene, 圣水条左端是否连续亮)。left_lit 单独返回是因为判「是不是在对战中」
+    要用它，而 Scene 里没有这个字段（它是判据、不是读数）。
+    """
+    elixir, frac, left_lit = read_elixir(frame)
+    scene = Scene(BATTLE, elixir, frac, read_hand(frame, tpl), read_enemy_towers(frame))
+    return scene, left_lit
 
 
 def _mine_unknown(frame, scene, state):
@@ -311,9 +316,9 @@ class InBattle(CustomRecognition):
         _apply_param(st, _param(argv.custom_recognition_param))
 
         frame = argv.image
-        scene = _analyze_battle(frame, st.tpl)
+        scene, left_lit = _analyze_battle(frame, st.tpl)
         ok = (len(scene.hand) >= C.BATTLE_MIN_CARDS
-              or (len(scene.hand) >= 1 and read_elixir(frame)[2]))
+              or (len(scene.hand) >= 1 and left_lit))
 
         if not ok:
             st.last_battle = None
@@ -347,7 +352,10 @@ class PlayCards(CustomAction):
         frame = context.tasker.controller.cached_image
         drv = MaaDriver(context, st.dry)
 
-        scene = st.last_battle or _analyze_battle(frame, st.tpl)
+        # 复用 CR.InBattle 刚算过的那一帧结果（同一帧，不必再算一遍）
+        scene = st.last_battle
+        if scene is None:
+            scene, _ = _analyze_battle(frame, st.tpl)
         st.last_battle = scene
         _mine_unknown(frame, scene, st)
 

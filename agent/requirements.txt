@@ -1,0 +1,9 @@
+# Agent 侧依赖。
+#
+# MaaFw    —— MaaFramework 的官方 Python 接口（**别装错成 maafw / MAA 相关别的包**）
+# opencv-python + numpy —— 圣水/塔血/皇冠的量化读数、白字掩码匹配都靠它
+#
+# 装法：pip install -r agent/requirements.txt
+MaaFw
+opencv-python
+numpy

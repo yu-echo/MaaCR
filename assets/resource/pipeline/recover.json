@@ -1,0 +1,11 @@
+{
+    "未知界面处理": {
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "CR.UnknownRecover",
+        "post_delay": 800,
+        "next": [
+            "对战循环入口"
+        ]
+    }
+}

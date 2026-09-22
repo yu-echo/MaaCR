@@ -1,0 +1,208 @@
+{
+    // 本文件是 ProjectInterface V2 协议描述，告诉通用 UI（MFAAvalonia 等）
+    // 这个项目要用哪些资源、有哪些任务可跑、各任务可以调什么参数。
+    // 文档：https://maafw.xyz/docs/3.3-ProjectInterfaceV2
+    //
+    // 说明：本项目目前只做简体中文，所以界面文案直接写中文。
+    // 以后要多语言：把要翻译的文案前面加 $ 前缀，再加 languages 字段指向
+    // 翻译文件（扁平 key-value JSON）即可。
+    "interface_version": 2,
+    "name": "MaaCR",
+    "title": "MaaCR · 皇室战争国服助手",
+    "version": "0.1.0",
+    "license": "MIT",
+    "github": "https://github.com/yu-echo/MaaCR",
+    "description": "皇室战争国服（腾讯代理版）自动化助手：自动对战刷局，其余日常任务在移植中。\n\n基于 MaaFramework，界面由 MFAAvalonia 提供。\n\n⚠️ 目标是**快速刷完尽可能多的对局**（刷宝箱 / 对局时长 / 卡牌大师进度），**不是上分**。评估它好不好用请看**每局对战耗时**，不是胜率。",
+    "welcome": "首次使用前请先看 README 的「使用前准备」一节：需要 MuMu 模拟器、里面装好国服皇室战争、并且已经手动登录过一次（微信 / QQ 授权本工具不碰）。",
+    "controller": [
+        {
+            "name": "安卓端",
+            "type": "Adb",
+            // 截图会缩放到「短边 720」。国服皇室战争是 720x1280 竖屏，
+            // 缩放比正好 1:1 —— 所以 image/ 里的模板与 pipeline 里的坐标
+            // 都是按 720x1280 量的，改这里就必须重采模板 + 重标坐标。
+            "display_short_side": 720
+        }
+    ],
+    "resource": [
+        {
+            "name": "国服",
+            "path": [
+                "./resource"
+            ]
+        }
+    ],
+    "agent": {
+        // 路径相对 **interface.json 所在目录**（也就是 assets/）解析，所以是 ../
+        // -u 强制无缓冲输出：不然长任务跑起来日志会长时间不刷新，看起来像卡死。
+        "child_exec": "python",
+        "child_args": [
+            "../agent/main.py",
+            "-u"
+        ]
+    },
+    "pretask": {
+        // 控制器建立**之前**执行：① 确认目标是本地模拟器而不是插着的真机；
+        // ② 模拟器没在跑就自己拉起来。非零退出会中止启动，正好当闸门用。
+        "name": "环境准备",
+        "label": "环境准备（检查设备 + 启动模拟器）",
+        "exec": "python",
+        "args": [
+            "../tools/preflight.py"
+        ]
+    },
+    "group": [
+        {
+            "name": "battle",
+            "label": "对战任务",
+            "default_expand": true
+        }
+    ],
+    "task": [
+        {
+            "name": "自动对战",
+            "entry": "启动检查",
+            "group": [
+                "battle"
+            ],
+            "default_check": true,
+            "description": "自动把游戏调到前台 -> 进局 -> 按策略下牌 -> 结算 -> 再进局，直到打满指定局数。\n\n认不出来的界面有三级自愈：先试着点底部导航回主界面，再当全屏弹层推进，最后判定「认不出 + 画面定格」就重启游戏。",
+            "option": [
+                "打几局",
+                "出牌门槛",
+                "演练模式"
+            ]
+        }
+    ],
+    "option": {
+        "打几局": {
+            "type": "input",
+            "label": "最多打几局",
+            "description": "打满这个局数就停下。默认 1 局 —— 第一次跑建议就用 1。",
+            "inputs": [
+                {
+                    "name": "局数",
+                    "label": "局数",
+                    "default": "1",
+                    "pipeline_type": "int",
+                    "verify": "^[1-9][0-9]*$",
+                    "pattern_msg": "请填正整数"
+                }
+            ],
+            "pipeline_override": {
+                "对局数已达标": {
+                    "custom_recognition_param": {
+                        "matches": "{局数}"
+                    }
+                }
+            }
+        },
+        "出牌门槛": {
+            "type": "input",
+            "label": "出牌圣水门槛",
+            "description": "圣水到这个数才出牌。调低（5~6）= 出牌更勤、更像无脑速推；调高（9~10）= 攒一波再推。\n\n原来的自动精灵脚本是「必须满 10 才出」，白白浪费回蓝，所以默认降到 8。",
+            "inputs": [
+                {
+                    "name": "门槛",
+                    "label": "门槛",
+                    "default": "8",
+                    "pipeline_type": "int",
+                    "verify": "^(10|[0-9])$",
+                    "pattern_msg": "请填 0~10 的整数"
+                }
+            ],
+            "pipeline_override": {
+                "对战中": {
+                    "custom_action_param": {
+                        "min_elixir": "{门槛}"
+                    }
+                }
+            }
+        },
+        "演练模式": {
+            "type": "switch",
+            "label": "演练模式（只识别不点击）",
+            "description": "只截图 + 识别 + 打印决策，一次都不点。用来验证「它认不认得准」。",
+            "default_case": "No",
+            "cases": [
+                {
+                    "name": "Yes",
+                    "pipeline_override": {
+                        "对战中": {
+                            "custom_action_param": {
+                                "dry_run": true
+                            }
+                        },
+                        "结算界面": {
+                            "custom_action_param": {
+                                "dry_run": true
+                            }
+                        },
+                        "宝箱弹层": {
+                            "custom_action_param": {
+                                "dry_run": true
+                            }
+                        },
+                        "卡组页": {
+                            "custom_action_param": {
+                                "dry_run": true
+                            }
+                        },
+                        "未知界面处理": {
+                            "custom_action_param": {
+                                "dry_run": true
+                            }
+                        },
+                        "主界面": {
+                            "action": "DoNothing"
+                        }
+                    }
+                },
+                {
+                    "name": "No"
+                }
+            ]
+        }
+    },
+    "setting": [
+        {
+            "name": "battle_setting",
+            "label": "对战设置",
+            "description": "对所有对战任务生效。",
+            "option": [
+                "出牌门槛",
+                "演练模式"
+            ]
+        }
+    ],
+    "preset": [
+        {
+            "name": "刷 5 局",
+            "description": "打满 5 局就停。",
+            "task": [
+                {
+                    "name": "自动对战",
+                    "enabled": true,
+                    "option": {
+                        "打几局": {
+                            "局数": "5"
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "只认不打（演练）",
+            "description": "打 1 局但一次都不点击，用来检查识别准不准。",
+            "task": [
+                {
+                    "name": "自动对战",
+                    "enabled": true,
+                    "option": {
+                        "演练模式": "Yes"
+                    }
+                }
+            ]
+        }
+    ]
+}

@@ -1,0 +1,48 @@
+{
+    "启动检查": {
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "CR.Boot",
+        "next": [
+            "对战循环入口"
+        ]
+    },
+    "对战循环入口": {
+        "recognition": "DirectHit",
+        "action": "DoNothing",
+        "next": [
+            "对局数已达标",
+            "结算界面",
+            "登录页",
+            "宝箱弹层",
+            "对战中",
+            "卡组页",
+            "主界面",
+            "匹配中",
+            "未知界面处理"
+        ]
+    },
+    "对局数已达标": {
+        "recognition": "Custom",
+        "custom_recognition": "CR.MatchesReached",
+        "custom_recognition_param": {
+            "matches": 1
+        },
+        "action": "StopTask"
+    },
+    "登录页": {
+        "recognition": "TemplateMatch",
+        "template": "anchors/cadpa.png",
+        "threshold": 0.8,
+        "action": "StopTask",
+        "focus": {
+            "Node.Recognition.Succeeded": {
+                "content": "检测到登录页 —— 停下来等你手动登录（微信 / QQ 授权不碰）",
+                "display": [
+                    "log",
+                    "toast"
+                ]
+            }
+        }
+    }
+}

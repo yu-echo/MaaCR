@@ -1,0 +1,13 @@
+# OCR 模型放这里（det.onnx / rec.onnx / keys.txt）。
+#
+# 当前项目**一个 OCR 节点都没用** —— 圣水、塔血、皇冠数都是「宽度就是数值」
+# 加色块计数读出来的，不需要文字识别。所以这个目录现在是空的，这没问题：
+# 只有 pipeline 里出现 recognition: "OCR" 的节点才会去加载模型。
+#
+# 以后要做「读杯数」「读卡牌大师进度」这类文字，从这里拿预转换好的模型：
+#   https://github.com/MaaXYZ/MaaCommonAssets/tree/main/OCR
+# 按 model/ocr/ 放 det.onnx + rec.onnx + keys.txt 即可。
+#
+# 模型文件体积不小，默认不提交。
+*
+!.gitignore

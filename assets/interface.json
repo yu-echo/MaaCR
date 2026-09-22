@@ -56,6 +56,11 @@
             "name": "battle",
             "label": "对战任务",
             "default_expand": true
+        },
+        {
+            "name": "daily",
+            "label": "日常任务",
+            "default_expand": true
         }
     ],
     "task": [
@@ -70,6 +75,29 @@
             "option": [
                 "打几局",
                 "出牌门槛",
+                "演练模式"
+            ]
+        },
+        {
+            "name": "领商店免费项",
+            "entry": "商店任务",
+            "group": [
+                "daily"
+            ],
+            "description": "进商店，把「每日精选」里价格写着「免费」的卡都领掉。\n\n判据是那两个**字**（白字掩码匹配），不是颜色 —— 免费项不一定是绿卡。看到「已收集！」就停：它是「今天已领完」的信号，继续翻下去只是空转（列表实测有 37~55 屏）。\n\n⚠️ 只能领免费的。弹窗里那个绿色「免费！」按钮是**先认出才点**的，不会盲点坐标误领要花宝石的卡。",
+            "option": [
+                "演练模式"
+            ]
+        },
+        {
+            "name": "部落捐赠",
+            "entry": "部落任务",
+            "group": [
+                "daily"
+            ],
+            "description": "进部落聊天，把能捐的卡牌请求捐掉。\n\n只看**亮绿色**的「捐赠」按钮（底色饱和度高＝可捐）；灰的是自己发起的请求，捐不了。点一下就直接捐出，没有二次确认弹窗。底部的「确定」只在全部捐完之后点一次 —— 那是退出聊天的按钮，每捐一次点它一下就直接退出了。",
+            "option": [
+                "捐几次",
                 "演练模式"
             ]
         }
@@ -119,10 +147,32 @@
                 }
             }
         },
+        "捐几次": {
+            "type": "input",
+            "label": "部落最多捐几次",
+            "description": "一次进部落最多捐几次。默认 4。\n\n当前屏没有可捐的请求时会自动往上翻聊天记录找，最多翻 8 层。",
+            "inputs": [
+                {
+                    "name": "次数",
+                    "label": "次数",
+                    "default": "4",
+                    "pipeline_type": "int",
+                    "verify": "^[1-9][0-9]*$",
+                    "pattern_msg": "请填正整数"
+                }
+            ],
+            "pipeline_override": {
+                "部落捐赠": {
+                    "custom_action_param": {
+                        "donate_rounds": "{次数}"
+                    }
+                }
+            }
+        },
         "演练模式": {
             "type": "switch",
             "label": "演练模式（只识别不点击）",
-            "description": "只截图 + 识别 + 打印决策，一次都不点。用来验证「它认不认得准」。",
+            "description": "只截图 + 识别 + 打印决策，一次都不点。用来验证「它认不认得准」。\n\n对**所有任务**生效：对战、商店、部落都是。",
             "default_case": "No",
             "cases": [
                 {
@@ -155,6 +205,16 @@
                         },
                         "主界面": {
                             "action": "DoNothing"
+                        },
+                        "商店领免费项": {
+                            "custom_action_param": {
+                                "dry_run": true
+                            }
+                        },
+                        "部落捐赠": {
+                            "custom_action_param": {
+                                "dry_run": true
+                            }
                         }
                     }
                 },
@@ -167,8 +227,8 @@
     "setting": [
         {
             "name": "battle_setting",
-            "label": "对战设置",
-            "description": "对所有对战任务生效。",
+            "label": "全局设置",
+            "description": "对所有任务生效。",
             "option": [
                 "出牌门槛",
                 "演练模式"
@@ -201,6 +261,20 @@
                     "option": {
                         "演练模式": "Yes"
                     }
+                }
+            ]
+        },
+        {
+            "name": "日常一条龙",
+            "description": "领商店免费项 + 部落捐赠，各跑一遍，跑完自动回主界面。",
+            "task": [
+                {
+                    "name": "领商店免费项",
+                    "enabled": true
+                },
+                {
+                    "name": "部落捐赠",
+                    "enabled": true
                 }
             ]
         }

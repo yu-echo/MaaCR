@@ -34,9 +34,13 @@ UNKNOWN = "unknown"
 # ==================== 基础工具 ====================
 
 def frac_in(frame, box, hsv_range):
-    """box 区域里落在色域内的像素占比。box 是 (x0,y0,x1,y1)。"""
-    x0, y0, x1, y1 = box
-    patch = frame[y0:y1, x0:x1]
+    """box 区域里落在色域内的像素占比。
+
+    box 是 (x, y, w, h) —— 与 MaaFramework 的 `roi`、与下面的 `sat_val_of` 同一套约定。
+    （本项目全屏坐标才是 (x0,y0,x1,y1)，两者别混；混了不会报错，只会算错区域。）
+    """
+    x, y, w, h = box
+    patch = frame[y:y + h, x:x + w]
     if patch.size == 0:
         return 0.0
     lo, hi = hsv_range
@@ -300,39 +304,39 @@ def find_white_text(frame, template, roi=None, threshold=0.78, scales=(1.0,),
     匹配会掉很多。
 
     scales：不同区块的卡片大小不一样，字号会有差异，给一组缩放兜底。
-    """
-    tpl_mask = white_mask(template)
-    if masks_are_blank(tpl_mask):
-        return []
-    th, tw = tpl_mask.shape[:2]
 
+    ⚠️ 多尺度必须在**转掩码之前**缩放（先缩彩色模板、再抽白字）。
+       反过来对二值掩码做插值会凭空造出一圈中间灰值，那已经不是旧版实测过的做法了。
+    """
     if roi is None:
         area, oy = frame, 0
     else:
         x0, y0, x1, y1 = roi
         area, oy = frame[y0:y1, x0:x1], y0
-    if area.size == 0 or th > area.shape[0] or tw > area.shape[1]:
+    if area.size == 0:
         return []
-
     frame_mask = white_mask(area)
+
     hits = []
     for s in scales:
-        if s == 1.0:
-            t, fm = tpl_mask, frame_mask
-        else:
-            t = cv2.resize(tpl_mask, None, fx=s, fy=s, interpolation=cv2.INTER_LINEAR)
-            if t.shape[0] > area.shape[0] or t.shape[1] > area.shape[1]:
-                continue
-            fm = frame_mask
-        res = cv2.matchTemplate(fm, t, cv2.TM_CCOEFF_NORMED)
+        tpl = template if abs(s - 1.0) < 1e-6 else cv2.resize(
+            template, None, fx=s, fy=s, interpolation=cv2.INTER_AREA)
+        if tpl.shape[0] > area.shape[0] or tpl.shape[1] > area.shape[1]:
+            continue
+        tpl_mask = white_mask(tpl)
+        if masks_are_blank(tpl_mask):
+            continue
+        res = cv2.matchTemplate(frame_mask, tpl_mask, cv2.TM_CCOEFF_NORMED)
         ys, xs = np.nonzero(res >= threshold)
         for y, x in zip(ys, xs):
-            hits.append((float(res[y, x]), int(x), int(y), t.shape[1], t.shape[0]))
+            hits.append((float(res[y, x]), int(x), int(y),
+                         tpl_mask.shape[1], tpl_mask.shape[0]))
 
     hits.sort(reverse=True)
     keep = []
     for sc, x, y, w, h in hits:
-        if all(abs(x - kx) > nms_dist or abs(y - ky) > nms_dist for _, kx, ky, _, _ in keep):
+        if all(abs(x - kx) > nms_dist or abs(y - ky) > nms_dist
+               for _, kx, ky, _, _ in keep):
             keep.append((sc, x, y, w, h))
             if limit and len(keep) >= limit:
                 break

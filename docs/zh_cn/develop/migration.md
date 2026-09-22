@@ -19,8 +19,8 @@
 | `strategy.py` | 97 行 | `agent/cr_strategy.py`，**几乎零改动** |
 | `config.py` | 363 行 | 一拆三：坐标阈值 → pipeline JSON + `interface.json`；策略参数 → `agent/cr_config.py`；模板清单 → `image/` |
 | `bot.py` | 313 行 | 主循环 → `pipeline/main.json` 的 `next` 分发 + `battle.json` / `recover.json` |
+| `daily.py` | 674 行 | 一拆二：扫描循环 → `agent/cr_daily.py`；界面级动作 → `pipeline/daily.json`。判据与阈值**一个都没改** |
 | `app.py` + `gui_app.py` + `gui/` | ~32KB | **删除**，改用 MFAAvalonia |
-| `daily.py` | 674 行 | **未迁完**（阶段 3）。模板已放好，逻辑待迁 |
 | `capture.py` | 119 行 | 不迁。采图改用 MFA 工具箱 / VSCode 插件 |
 | `templates/` | 45 张 | 活跃的 27 张进 `image/`，按用途分子目录 |
 
@@ -57,6 +57,7 @@ analyze() 判定顺序                        pipeline 的 next
 | 旧版写法 | MaaFramework | 注意 |
 | --- | --- | --- |
 | `cv2.matchTemplate(..., TM_CCOEFF_NORMED)` | `TemplateMatch` | `method` 默认就是 5，与 cv2 一致 ⇒ **阈值可照搬**，不用重标定 |
+| `Device.screenshot()`（每轮真截一张） | `controller.post_screencap()` | ⚠️ **别把 `controller.cached_image` 当「当前画面」** —— 它是**上一次识别时**留下的那一帧，在自定义动作里连着取两次会拿到同一张图。判「画面还在不在动」的流程（商店滑到底）用它会在第一屏就误判 |
 | `_frac(frame, box, HSV_RANGE) > 0.40` | `ColorMatch` | ⚠️ `count` 是**像素个数**不是占比，必须 `阈值 × roi宽 × roi高`；例 `0.40×190×56 = 4256` |
 | `cv2.COLOR_BGR2HSV` | `ColorMatch.method: 40` | ⚠️ 默认是 **4（RGB）**，不显式写就按 RGB 解释你的 HSV 三元组，判据全失效 |
 | `time.sleep(n)` | `post_delay: n` | |
@@ -68,8 +69,23 @@ analyze() 判定顺序                        pipeline 的 next
 
 ### ⚠️ `timeout` 的语义极易搞错
 
-pipeline 的 `timeout` 是「**当前节点等待它的 `next` 命中的时间**」，不是「本节点自己的超时」。
-官方文档原话：**调整本节点识别等待时间应改上一节点的 timeout**。
+pipeline 的 `timeout` 是「**当前节点 `next` 列表的循环识别超时**」，不是「本节点自己的超时」。
+官方文档原话：**调整本节点识别等待时间应改上一节点的 timeout**。近似逻辑：
+
+```
+while (!hit && !timeout) { foreach (next); sleep_until(rate_limit); }
+```
+
+两个直接推论，日常任务的设计就是靠它们才成立的：
+
+1. **`next` 列表里多列一个节点不额外花时间** —— 每一轮会把整张列表挨个识别一遍、
+   命中即止。所以「日常任务入口也顺手查一下登录页」是白拿的（复用主流程已有的
+   `登录页` 节点，代价只有一次模板匹配）。
+2. **`next` 里必须有一个「一定会命中」的节点，否则整条链会超时结束。**
+   主循环把 `未知界面处理`（`DirectHit`，永远命中）放在 `next` 末尾就是这个道理。
+
+`on_error` 的触发条件是「本节点 `next` 列表**超时未命中**」或「动作执行失败」——
+注意是**本节点**的，不是子节点的。
 
 ### ⚠️ pipeline JSON 不写注释
 
@@ -90,23 +106,25 @@ pipeline 的 `timeout` 是「**当前节点等待它的 `next` 命中的时间**
 | 手牌识别 + 出牌决策 | 手牌、圣水、破塔判定是**同一个原子决策**的三个输入，拆成节点后框架只知道单槽结果，反而要多传状态 |
 | 三级自愈阶梯 | 三段是**互斥的 if/elif**，各带计数器（试满几次就降级）。拆成分支要靠 3~4 个自定义识别表达「该轮到哪一段了」，计数器还得在 Agent 侧另存一份 |
 | 白字掩码匹配 | 见下节 |
+| 商店 / 部落的扫描循环 | 「扫一屏 -> 领掉这一屏**所有**目标 -> 看终止信号 -> 慢滑一屏」，带跨屏去重集合与连续空屏计数；其中「滑到底」的判据是「画面**还在不在动**」，而 `wait_freezes` 是「**等**它不动」，语义正好相反。逐条见 [`../daily.md`](../daily.md) 第一节 |
 
-### 白字掩码匹配的现状
+### 白字掩码匹配：已定案走方案 B（留在 Agent）
 
 旧版最有用的一招：把画面和模板**都先转成白色像素掩码**再比，等于把背景整个忽略掉。
 实测收益：商店「免费」正确位置 1.000、14 张对照截图次高分全部 < 0.60（零误报）；
 部落「捐赠」灰按钮 0.997 / 绿按钮 0.898（**原色匹配绿按钮只有 0.822，会被 0.85 阈值丢掉**）。
 
-MaaFramework 的 `TemplateMatch` 只有 `green_mask`，**没有任意掩码**。两条路：
+MaaFramework 的 `TemplateMatch` 只有 `green_mask`，**没有任意掩码**。当时留了两条路，
+现在**定了方案 B**（`cr_vision.find_white_text`，调用方 `cr_daily.py`），
+方案 A 不走的理由：
 
-- **方案 A（推荐先试）**：把模板的**非白像素涂成纯绿 `(0,255,0)`** 再开 `green_mask: true`。
-  `green_mask` 只跳过**模板侧**涂绿区域，画面侧不用动 ⇒ 语义正好等于掩码匹配。
-  ⚠️ **需要实测确认框架对「绿色」的判定容差**（文档只说「涂绿区域不匹配」，没给容差），
-  以及涂绿边界像素的抗锯齿影响。
-- **方案 B（保底）**：把 `cr_vision.find_white_text` 注册成 Custom 识别，行为与旧版 100% 一致。
+1. 官方文档对 `green_mask` 的原话是「**应仅遮盖干扰区域，避免过度涂抹导致主体边缘特征丢失**」，
+   而本项目的做法恰恰是「除了字，其余全盖掉」—— 正撞在这句警告上；
+2. `green_mask` 只盖**模板侧**，画面侧仍是原色，而这两处判据的关键是「**双方都**只留白字」；
+3. 换匹配器等于把 0.898 / 0.85 这个本来就薄的余量重新标定一遍，那需要实机帧。
 
-> 当前代码里 `find_white_text` / `sat_val_of` 已经就位，但**还没有任何节点调用它们**
-> —— 它们是阶段 3（日常任务）要用的。这是有意保留的，不是死代码。
+> 顺带修掉一个保真度问题：多尺度要在**转掩码之前**缩放（先缩彩色模板、再抽白字）。
+> 对二值掩码做插值会凭空造出一圈中间灰值，那就不是旧版实测过的做法了。
 
 ---
 
@@ -160,10 +178,23 @@ MaaFramework 的 `TemplateMatch` 只有 `green_mask`，**没有任意掩码**。
 
 `cr_nodes._State` 是模块级单例，一个 Agent 进程内只能跑一条任务链。
 通用 UI 的多实例会各自起一个 Agent 进程，所以这一点成立 —— 但如果同一个实例里
-同时跑两个任务（比如「自动对战」和未来的「商店免费项」并行），计数会互相污染。
+**同时**跑两条任务链，计数会互相污染。
 
-- **怎么验**：阶段 3 加入日常任务后，确认通用 UI 是串行执行任务链，或者把状态改成
-  按 `task_detail.task_id` 分桶。
+**已经处理掉的那一半（顺带修掉一个真 bug）**：`dry` / `min_elixir` / `donate_rounds`
+这些「由节点参数写入」的开关原本是**粘性**的（`_apply_param` 只在参数出现时才改），
+而 Agent 进程在通用 UI 里是**跨多次运行存活**的。于是：
+
+> 按 README 推荐的顺序上手 —— 先开着「演练模式」跑一次验证识别，再关掉跑真的 ——
+> 第二次**一个都不点**（`dry` 还留在 True），看起来像"卡住了"。
+
+现在 `_apply_param(state, argv)` 每次进节点都先按 `task_id` 复位任务级状态
+（局数/自愈计数 + 上述三个开关），紧接着再应用本节点的参数。日常任务加入后，
+一个会话里连着跑「自动对战」和「日常一条龙」也不会串味。
+
+- **怎么验**：开演练模式跑一次（或跑「只认不打（演练）」预设），**不要重启 MFAAvalonia**，
+  再跑一次正常模式 —— 第二次应该真的点下去。这是本次改动里最容易验证的一条。
+- **还剩什么**：如果通用 UI 真的并行跑两条链（而不是串行），计数仍会互相污染。
+  那时候再把状态按 `task_detail.task_id` 分桶。
 
 ### 5.6 未实机验证的部分（环境所限）
 
@@ -173,17 +204,29 @@ MaaFramework 的 `TemplateMatch` 只有 `green_mask`，**没有任意掩码**。
 - 所有 Custom 识别/动作的真实调用；
 - `CR.Boot` 里 `dumpsys window` 的 `mCurrentFocus=` 解析（各 Android 版本格式略有差异，
   代码写得宽容、拿不到就当「不确定」，但仍需实测）；
-- 整条流水线能否完整打完一局。
+- `MaaDriver.shot()` 的 `post_screencap()` 每次是否真的拿到新帧
+  （商店「滑到底」的判据完全依赖它，见 [`../daily.md`](../daily.md) 第五节）；
+- 整条流水线能否完整打完一局；两条日常流程能否跑完一轮。
 
 **已完成的离线校验**（可复现）：
 
 ```bash
 python tools/validate.py
-#   pipeline 文件节点数：11
-#   检查模板引用：5 处 / 检查节点引用：17 处 / 检查 Custom 注册：识别 2 个 / 动作 6 个
+#   pipeline 文件节点数：16
+#   检查模板引用：5 处 / 检查节点引用：23 处 / 检查 Custom 注册：识别 2 个 / 动作 8 个
 #   全部通过。
 python -m py_compile agent/*.py     # 语法检查通过
 ```
+
+另外这次还对 `assets/` 下的全部 JSON 跑了一遍**官方 schema 校验**
+（`deps/tools/*.schema.json`，需要 `jsonschema`）—— 4 个 pipeline 文件 + `interface.json`
+全部通过。这一步没进仓库（`tools/validate.py` 刻意只依赖标准库），但如果以后想加：
+
+> schema 里的 `$ref` 是相对的（`./custom.action.schema.json`），
+> jsonschema 会把它当未知 URL 类型直接抛错。
+> 先把 `"./` 替换成 `"<deps/tools 的 file: URI>/` 再校验就行。
+> 这一步能抓到 `tools/validate.py` 抓不到的一类问题：**字段名写错**
+> （比如 `reco` 写成 `recognition` 的变体）—— 那种错完全是静默的。
 
 ---
 
@@ -191,18 +234,18 @@ python -m py_compile agent/*.py     # 语法检查通过
 
 按优先级：
 
-1. **先跑通阶段 1**（见 README 路线图）：用「演练模式」验证识别，再用正常模式打 1 局。
-   把上面 5.1~5.4 逐条验掉。
+1. **先跑通阶段 1 和阶段 3**（见 README 路线图）：用「演练模式」验证识别，再用正常模式真跑。
+   把上面 5.1~5.6 逐条验掉，日常任务那两条按 [`../daily.md`](../daily.md) 第五节的步骤走。
 2. **补锚点**：部落聊天页、社交页、训练日预览页、商店各子标签现在都返回 unknown，
    只能靠自愈兜底。用 MFA 工具箱或 VSCode 插件截一屏、裁个稳定特征块放进 `image/anchors/`，
    再在 `recover.json` 或新的 pipeline 文件里加判据。
    **回检区分度**：目标页 ≈ 1.00、其它页 < 0.3 才算合格。
-3. **迁日常任务**（`daily.py` 674 行）：商店免费项 + 部落捐赠。
-   这一块会用到白字掩码（见第四节），先做 5.2 的 `green_mask` 小实验再决定 A/B 方案。
-   商店滚动到底的判据（旧版看「画面还在不在动」）在 pipeline 里没有等价物
-   （`wait_freezes` 是「等」静止，语义相反），要留在 Agent。
+3. **防守判断**（阶段 5，收益最大的一块）：识别己方半场的红血条（敌方单位）与蓝血条
+   （我方单位），做成「有敌人先防守、防住再反推」。现在这套「只推一路、完全不守」的
+   打法赢不了，这一层是把它变成能赢的前提。
 4. **打包发布**：参考 `MaaPracticeBoilerplate` 的 `.github/workflows/install.yml`，
-   附便携式 Python 并改 `interface.json` 里 agent 的 `exec` 字段。
+   附便携式 Python 并改 `interface.json` 里 agent 的 `exec` 字段 —— 注意现在有
+   **两个** Python 入口要打包：`agent/main.py`（Agent）与 `tools/preflight.py`（pretask）。
 
 ---
 

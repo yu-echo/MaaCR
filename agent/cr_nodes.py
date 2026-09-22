@@ -10,7 +10,10 @@
     - 带形状约束的找色：底部确认按钮要过滤长宽比；
     - 多值联合决策：手牌 + 圣水 + 破塔判定 -> 出牌，是同一个原子决策；
     - 自愈阶梯：三段式的计数与「与」判据，拆成 pipeline 分支要多写好几个识别，
-      而逻辑本身是一段互斥的 if/elif，留在代码里更好维护。
+      而逻辑本身是一段互斥的 if/elif，留在代码里更好维护；
+    - 连续扫描循环：商店领免费项、部落捐赠是「扫一屏 -> 领掉这一屏**所有**目标
+      -> 看终止信号 -> 慢滑一屏」，中间带着跨屏去重集合与连续空屏计数 ——
+      详见 `cr_daily` 的模块文档串（那里列了四条不能拆的硬原因）。
 
 注册名统一加 `CR.` 前缀，一眼能和 pipeline 里的内置算法区分开。
 """
@@ -30,6 +33,7 @@ from maa.custom_recognition import CustomRecognition
 
 import cr_config as C
 import cr_strategy
+from cr_daily import Daily
 from cr_nav import Nav
 from cr_stuck import StuckWatcher
 from cr_vision import (BATTLE, Scene, Templates, find_bottom_button,
@@ -59,6 +63,7 @@ class _State:
         self.task_id = None
         self.dry = False
         self.min_elixir = C.MIN_ELIXIR
+        self.donate_rounds = C.DONATE_ROUNDS
         self.target_matches = 1
         self.matches_done = 0
         self.three_crown = 0
@@ -86,21 +91,34 @@ class _State:
     # ---- 任务级重置 ----
 
     def bind_task(self, task_detail):
-        """换了一个任务就重置局数相关计数。
+        """换了一个任务就把**任务级**状态复位。
 
         用 task_id 判定最可靠：同一任务链里 task_id 不变，通用 UI 重新点一次
         执行会拿到新 task_id。
+
+        ⚠️ 复位的范围是**任务级**的两类东西：
+          · 局数 / 自愈计数这类累加器；
+          · `dry` / `min_elixir` / `donate_rounds` 这些**由节点参数写入**的开关。
+            它们必须在换任务时回到默认值，否则会从上一个任务粘过来 ——
+            因为 `_apply_param` 只在参数出现时才改它。Agent 进程在通用 UI 里是
+            **跨多次运行存活**的，于是「先开着演练模式跑一次、关掉再跑一次」
+            第二次仍然一个都不点 —— 而 README 恰好推荐用户按这个顺序上手。
         """
         tid = getattr(task_detail, "task_id", None)
-        if tid is not None and tid != self.task_id:
-            self.task_id = tid
-            self.matches_done = 0
-            self.three_crown = 0
-            self.battle_t0 = None
-            self.last_battle = None
-            self.mined = set()
-            self.home_tries = self.overlay_taps = self.game_restarts = 0
-            self.stuck.reset()
+        if tid is None or tid == self.task_id:
+            return
+        self.task_id = tid
+        self.matches_done = 0
+        self.three_crown = 0
+        self.battle_t0 = None
+        self.last_battle = None
+        self.mined = set()
+        self.home_tries = self.overlay_taps = self.game_restarts = 0
+        self.stuck.reset()
+        # 节点参数回到配置默认值；接下来这个任务的节点会把它自己的值填回来
+        self.dry = False
+        self.min_elixir = C.MIN_ELIXIR
+        self.donate_rounds = C.DONATE_ROUNDS
 
     def tick_unknown(self):
         """每进入一次「未知界面」调一次，必要时归零三段式计数。
@@ -159,9 +177,9 @@ def _roi_xywh(x0y0x1y1):
 
 
 class MaaDriver:
-    """把 maa 的 Context 适配成 cr_nav 认识的最小接口（shot / tap）。
+    """把 maa 的 Context 适配成 cr_nav / cr_daily 认识的最小接口（shot / tap）。
 
-    这样 cr_nav 不直接依赖框架，能拿存下来的帧做离线自检。
+    这样它们不直接依赖框架，能拿存下来的帧做离线自检。
     """
 
     def __init__(self, ctx, dry=False):
@@ -169,6 +187,23 @@ class MaaDriver:
         self.dry = dry
 
     def shot(self):
+        """当前画面 —— **真实重新截一帧**，不是 `cached_image`。
+
+        ⚠️ 为什么不能用 `controller.cached_image`：它是「**上一次识别时**留下的那一帧」。
+        在自定义动作里连着调两次会拿到同一张图，而日常任务的商店流程**正是靠
+        「相邻两帧有没有差别」判有没有滑到底**（见 `cr_daily.claim_shop_free`）——
+        拿缓存帧会让第一屏就判成「画面静止 / 到底」，整条流程直接空转结束。
+
+        框架自带的 `post_screencap()` 是显式重新截图，且 `CR.Boot` 里已经在用同一套
+        调用（`post_screencap().wait().get()`）。截帧失败时退回缓存帧：
+        比抛异常中断整条流程强，但日志要留痕。
+        """
+        try:
+            img = self.ctx.tasker.controller.post_screencap().wait().get()
+            if img is not None:
+                return img
+        except Exception as exc:
+            _log("  重新截帧失败，退回缓存帧：%s" % exc)
         return self.ctx.tasker.controller.cached_image
 
     def tap(self, x, y):
@@ -196,12 +231,38 @@ class MaaDriver:
         self.ctx.tasker.controller.post_start_app(package).wait()
 
 
-def _apply_param(state, param):
-    """把 pipeline 传下来的参数应用到运行状态。"""
+def _apply_param(state, argv):
+    """每个节点进来的标准起手：① 换了任务就复位；② 把节点参数写进运行状态。
+
+    「复位」和「应用参数」必须在同一个函数里、并按这个顺序 —— 复位会把
+    `dry` / `min_elixir` / `donate_rounds` 打回默认值，紧接着应用本节点的参数
+    把它们设成该任务该有的值。分开写就很容易漏掉某一边。
+
+    参数键名在两类节点上不同（识别是 `custom_recognition_param`、动作是
+    `custom_action_param`），所以两个都看，谁有值用谁。返回解析出来的 dict，
+    少数需要读参数的节点直接用返回值。
+    """
+    state.bind_task(getattr(argv, "task_detail", None))
+    param = _param(getattr(argv, "custom_action_param", None)
+                   or getattr(argv, "custom_recognition_param", None))
     if "dry_run" in param:
         state.dry = bool(param["dry_run"])
     if "min_elixir" in param:
         state.min_elixir = _as_int(param["min_elixir"], state.min_elixir)
+    if "donate_rounds" in param:
+        state.donate_rounds = _as_int(param["donate_rounds"], state.donate_rounds)
+    return param
+
+
+def _daily(state):
+    """按当前运行状态现造一个 `cr_daily.Daily`。
+
+    刻意**不缓存**实例：`dry` 是每个节点都可能被 pipeline 参数改的，
+    缓存一份就要记得处处同步，漏一次就是「演练模式下真的点了」这类吓人的 bug。
+    构造它没有 I/O（模板早就装在 `state.tpl` 里了），现造最省心。
+    """
+    return Daily(state.tpl, state.nav, log=_log, dry=state.dry,
+                 bottom=find_bottom_button)
 
 
 def _foreground_pkg(context):
@@ -286,8 +347,7 @@ class MatchesReached(CustomRecognition):
 
     def analyze(self, context, argv):
         st = _ST.ensure()
-        st.bind_task(argv.task_detail)
-        param = _param(argv.custom_recognition_param)
+        param = _apply_param(st, argv)
         st.target_matches = _as_int(param.get("matches"), st.target_matches)
 
         reached = st.matches_done >= st.target_matches
@@ -312,8 +372,7 @@ class InBattle(CustomRecognition):
 
     def analyze(self, context, argv):
         st = _ST.ensure()
-        st.bind_task(argv.task_detail)
-        _apply_param(st, _param(argv.custom_recognition_param))
+        _apply_param(st, argv)
 
         frame = argv.image
         scene, left_lit = _analyze_battle(frame, st.tpl)
@@ -348,7 +407,7 @@ class PlayCards(CustomAction):
 
     def run(self, context, argv):
         st = _ST.ensure()
-        _apply_param(st, _param(argv.custom_action_param))
+        _apply_param(st, argv)
         frame = context.tasker.controller.cached_image
         drv = MaaDriver(context, st.dry)
 
@@ -393,7 +452,7 @@ class OnResult(CustomAction):
 
     def run(self, context, argv):
         st = _ST.ensure()
-        _apply_param(st, _param(argv.custom_action_param))
+        _apply_param(st, argv)
         frame = context.tasker.controller.cached_image
         drv = MaaDriver(context, st.dry)
 
@@ -434,7 +493,7 @@ class TapOverlay(CustomAction):
 
     def run(self, context, argv):
         st = _ST.ensure()
-        _apply_param(st, _param(argv.custom_action_param))
+        _apply_param(st, argv)
         frame = context.tasker.controller.cached_image
         target = find_bottom_button(frame) or C.CENTER_TAP
         _log("全屏弹层（宝箱等）-> 点 %s" % (target,))
@@ -448,9 +507,43 @@ class GoMain(CustomAction):
 
     def run(self, context, argv):
         st = _ST.ensure()
-        _apply_param(st, _param(argv.custom_action_param))
+        _apply_param(st, argv)
         _log("回主界面（底部导航「对战」）")
         st.nav.go_main(MaaDriver(context, st.dry))
+        return True
+
+
+# ==================== 日常任务 ====================
+#
+# 这两个动作各自包**一整段扫描循环**，pipeline 那边只是一进一出两个节点。
+# 为什么循环不能拆成节点（四条硬原因：白字掩码、一屏多目标、「画面静止」判据、
+# 跨屏去重与计数），写在 cr_daily 的模块文档串里，别在这里重复。
+
+
+@AgentServer.custom_action("CR.ClaimShopFree")
+class ClaimShopFree(CustomAction):
+    """商店：领每日免费项。"""
+
+    def run(self, context, argv):
+        st = _ST.ensure()
+        _apply_param(st, argv)
+        n = _daily(st).claim_shop_free(MaaDriver(context, st.dry))
+        _log("商店免费项：本次领到 %d 处" % n)
+        # ⚠️ 一个都没领到**也算成功**：今天可能本来就领完了（第一屏就是「已收集！」），
+        #    那是正常收工不是失败。真正的失败（导航不到商店页）在 cr_daily 里已经
+        #    单独打了 ⚠️ 日志，靠它排查就够，不必让框架把任务标红。
+        return True
+
+
+@AgentServer.custom_action("CR.ClanDonate")
+class ClanDonate(CustomAction):
+    """部落：把聊天里能捐的请求捐掉。"""
+
+    def run(self, context, argv):
+        st = _ST.ensure()
+        _apply_param(st, argv)
+        n = _daily(st).clan_donate(MaaDriver(context, st.dry), st.donate_rounds)
+        _log("部落捐赠：本次捐出 %d 次" % n)
         return True
 
 
@@ -488,7 +581,7 @@ class UnknownRecover(CustomAction):
 
     def run(self, context, argv):
         st = _ST.ensure()
-        _apply_param(st, _param(argv.custom_action_param))
+        _apply_param(st, argv)
         frame = context.tasker.controller.cached_image
         drv = MaaDriver(context, st.dry)
 
@@ -560,7 +653,7 @@ class Boot(CustomAction):
 
     def run(self, context, argv):
         st = _ST.ensure()
-        _apply_param(st, _param(argv.custom_action_param))
+        _apply_param(st, argv)
         ctrl = context.tasker.controller
 
         # ① 屏幕常亮：模拟器恒为「充电中」，所以 stayon 一直有效

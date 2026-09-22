@@ -1,0 +1,44 @@
+{
+    "商店任务": {
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "CR.Boot",
+        "next": [
+            "登录页",
+            "商店领免费项"
+        ]
+    },
+    "商店领免费项": {
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "CR.ClaimShopFree",
+        "next": [
+            "日常收尾回主界面"
+        ]
+    },
+    "部落任务": {
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "CR.Boot",
+        "next": [
+            "登录页",
+            "部落捐赠"
+        ]
+    },
+    "部落捐赠": {
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "CR.ClanDonate",
+        "custom_action_param": {
+            "donate_rounds": 4
+        },
+        "next": [
+            "日常收尾回主界面"
+        ]
+    },
+    "日常收尾回主界面": {
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "CR.GoMain"
+    }
+}

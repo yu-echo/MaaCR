@@ -15,7 +15,7 @@ GitHub Actions 的 install 工作流会调它；本地也能手动跑，出包�
 脚本做四件事：
   1. 把 deps/ 里的 MaaFramework 原生库摆成 MFAAvalonia 认得的 .NET 布局；
   2. 复制 assets/resource 与 assets/interface.json；
-  3. 复制 agent/、tools/、docs/、README、LICENSE；
+  3. 复制 agent/、tools/、docs/、README、LICENSE、logo；
   4. **改写 install/interface.json 里那几个跟「文件在哪」有关的字段** —— 见 fix_paths()。
 
 只做「复制 + 改一行 JSON」，不下载任何东西；下载都在工作流 / ci 脚本里。
@@ -152,7 +152,7 @@ def fix_paths(version: str) -> None:
     print("  · 改写 interface.json：agent -> python/python.exe / pretask -> ../../python/python.exe")
 
     # 注释不保留：发布包里的 interface.json 是给 MFAAvalonia 读的，
-    # 该说明的东西留在仓库的 assets/interface.json 与 docs/zh_cn/develop/release.md。
+    # 该说明的东西留在仓库的 assets/interface.json 与 docs/zh_cn/3.1-打包发布.md。
     path.write_text(json.dumps(data, ensure_ascii=False, indent=4) + "\n", encoding="utf-8")
 
 
@@ -169,7 +169,8 @@ def install_tools() -> None:
 
 
 def install_chores() -> None:
-    for name in ("README.md", "LICENSE"):
+    # logo.png 也得带上：README 头部引用了 ./logo.png，漏了的话包里的 README 会挂个碎图
+    for name in ("README.md", "LICENSE", "logo.png"):
         src = ROOT / name
         if not src.is_file():
             die("缺少 %s —— 发布包里要带上它。" % name)

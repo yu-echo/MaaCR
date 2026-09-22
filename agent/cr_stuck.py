@@ -15,7 +15,7 @@
   新框架里主循环变成了 pipeline 的 next 分发，没有「每轮必过」的钩子，
   所以这里改成**自动判定重置**：两轮 unknown 之间隔了超过 UNKNOWN_RESET_GAP 秒
   就认为中途认出来过（因为认出来会走一段 post_delay 再做下一轮），计数归零。
-  ⇒ 这是本次移植里语义有一处近似的地方，需要实机验证（见 docs/zh_cn/develop/migration.md）。
+  ⇒ 这是本次移植里语义有一处近似的地方，需要实机验证（见 docs/zh_cn/3.2-迁移对照.md）。
 """
 
 from __future__ import annotations

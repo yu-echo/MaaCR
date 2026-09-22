@@ -1,0 +1,12 @@
+# 默认按文本处理，仓库里统一用 LF
+* text=auto eol=lf
+
+# 但 .bat 必须是 CRLF：cmd.exe 靠换行定位标签，
+# 只有 LF 的话 goto/label 会出各种莫名其妙的问题。
+*.bat text eol=crlf
+
+# 二进制，别让 git 去动它们
+*.png binary
+*.jpg binary
+*.ico binary
+*.zip binary

@@ -4,12 +4,14 @@
 
 **皇室战争国服 · 基于 MaaFramework 的自动化助手**
 
-自动开游戏 · 自动进局 · 按策略下牌 · 结算循环 · 三级自愈
+自动开游戏 · 自动进局 · 按策略下牌 · 结算循环 · 日常任务 · 三级自愈
 
-[![MaaFramework](https://img.shields.io/badge/MaaFramework-驱动-blue?style=flat-square)](https://github.com/MaaXYZ/MaaFramework)
+[![Release](https://img.shields.io/github/v/release/yu-echo/MaaCR?style=flat-square&label=%E4%B8%8B%E8%BD%BD)](https://github.com/yu-echo/MaaCR/releases/latest)
+[![License](https://img.shields.io/github/license/yu-echo/MaaCR?style=flat-square)](LICENSE)
+[![MaaFramework](https://img.shields.io/badge/MaaFramework-%E9%A9%B1%E5%8A%A8-blue?style=flat-square)](https://github.com/MaaXYZ/MaaFramework)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
-[![Platform](https://img.shields.io/badge/平台-Windows%20%7C%20MuMu%20模拟器-lightgrey?style=flat-square)]()
-[![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
+[![Platform](https://img.shields.io/badge/%E5%B9%B3%E5%8F%B0-Windows%20%7C%20MuMu%20%E6%A8%A1%E6%8B%9F%E5%99%A8-lightgrey?style=flat-square)]()
+[![Stars](https://img.shields.io/github/stars/yu-echo/MaaCR?style=flat-square&logo=github)](https://github.com/yu-echo/MaaCR/stargazers)
 
 </div>
 
@@ -17,13 +19,17 @@
 
 ## 这是什么
 
-把一套自写的 OpenCV + adb 皇室战争挂机脚本，**重构到 MaaFramework 之下**。
+把一套自写的 OpenCV + adb 皇室战争挂机脚本，**重构到 [MaaFramework](https://github.com/MaaXYZ/MaaFramework) 之下**。
 
-重构换掉的是「胶水层」，不是「识别能力」：设备层（446 行的 adb 封装）与自写 GUI 整块删除，
-交给 MaaFramework 的 `AdbController` 和 MFAAvalonia；而模板图、量化读法、出牌策略原样保留。
+换掉的是「胶水层」，不是「识别能力」：设备层（446 行的 adb 封装）与自写 GUI 整块删除，
+交给 MaaFramework 的 `AdbController` 和 [MFAAvalonia](https://github.com/MaaXYZ/MFAAvalonia)；
+而模板图、量化读法、出牌策略原样保留。
 
 **收益**：白拿 MFAAvalonia 的图形界面、多实例、定时执行、热键；流程变成声明式 JSON，
 可以用 MaaDebugger / VSCode 插件可视化调试；识别结果与失败截图自动落盘。
+
+> 这是个人自用工具，只针对**国服（腾讯代理版）**和 **MuMu 模拟器 720×1280 竖屏**调过。
+> 别的分辨率、别的模拟器、别的服，没试过，也不保证。
 
 ## ⚠️ 先说清楚定位
 
@@ -40,33 +46,75 @@
 > （红血条 = 敌方、蓝血条 = 我方）做成「有敌人先防守、防住再反推」——
 > 那是比现在大一个量级的活，见「路线图」。
 
-## 功能
+## 功能介绍
 
-**对战**
+### 对战
+
 - 自动把游戏调到前台并**等到它真的就位**再开始（冷启动十几秒不会误判）
 - 自动进局、按优先级与圣水条件出牌、结算后自动确认并进下一局
 - 破塔后落点自动切到敌方半场深位，往国王塔压（拿三冠的关键两步）
 - 局数与时间双安全阀，到数就停
 
-**日常**
+### 日常
+
 - **商店免费项**：只领价格写着「免费」的卡 —— 判据是那两个**字**（白字掩码匹配），不是颜色，
   免费项不一定是绿卡。看到「已收集！」就停（它是「今天已领完」的信号，列表实测有 37~55 屏）
 - **部落捐赠**：只捐**亮绿色**的可捐请求，灰的（自己发起的）跳过；点一下就直接捐出，
   没有二次确认弹窗，底部的「确定」只在全部捐完之后点一次（那是退出聊天的按钮）
-- 两个任务跑完都自动回主界面，可以串起来一把跑完
+- 两个任务跑完都自动回主界面，可以串起来一把跑完（界面里有「**日常一条龙**」预设）
 
-**自愈（认不出来的界面）**
+### 自愈（认不出来的界面）
+
 - ① 底部导航条还在 → 点「对战」回主界面（子页面卡住的正解，代价最低）
 - ② 没有导航条 → 当全屏弹层处理（开宝箱那种多阶段动画），严格限次
 - ③ 认不出来 **且画面也定格了**够久 → 判定真卡住，重启游戏（最贵但最确定）
 - ⚠️ **绝不按返回键兜底** —— 实测返回键会弹出游戏自己的「要退出吗」对话框，越「恢复」越乱
 
-**识别（不依赖 OCR）**
+### 识别（不依赖 OCR）
+
 - 圣水：洋红条**最右侧被点亮的列** ÷ 满条宽 × 10（白字会在条上打空洞，空洞不影响最右边界）
 - 敌塔血量：粉色血条**宽度就是血量**
 - 结算皇冠：金冠 = 已拿、蓝枕 = 没拿，按颜色数色块
 - 手牌：10 张卡面模板逐槽匹配（含精英形态两套素材，避免漏牌）
 - 自动捡「认不出来的卡面」存盘，供人工补进模板
+
+## 使用说明
+
+### 1. 下载
+
+到 [Releases](https://github.com/yu-echo/MaaCR/releases/latest) 下载 **`MaaCR-win-x86_64-vX.Y.Z.zip`**。
+
+只有 Windows 包 —— 底层识别与「启动前准备」都绑死了 MuMu 模拟器，出别的平台包没意义。
+
+> 想试还没发版的最新代码：Actions 里任何一次 `install` 跑完，都能在当次运行的
+> Artifacts 里下到预览包（版本号带 `-ci.`）。
+
+### 2. 解压，然后双击 `MFAAvalonia.exe`
+
+**解压到纯英文路径**下再跑（中文路径容易出各种怪问题）。里面已经自带了一份 Python
+和全部依赖，不需要你装 Python，也不用 `pip install` 任何东西。
+
+如果双击报错、提示缺少 .NET：MFAAvalonia 不是自包含发布，需要 **.NET 10 桌面运行时**。
+双击包里的 **`install-deps-win.bat`** 装一下（它走 winget，没有 winget 就自动打开官方下载页），
+**装完重启电脑**再试。
+
+### 3. 包里的目录长这样
+
+```
+MaaCR-win-x86_64-vX.Y.Z/
+├── MFAAvalonia.exe         ← 双击这个
+├── install-deps-win.bat    ← 缺 .NET 时才需要
+├── interface.json          ← 任务与选项的定义（MFAAvalonia 读它）
+├── resource/               ← 模板图与流水线（仓库里的 assets/resource）
+├── agent/                  ← 识别与动作的 Python 代码
+├── python/                 ← 自带的 Python，已装好 MaaFw / opencv / numpy
+├── runtimes/ libs/ plugins/← MaaFramework 的原生库
+├── tools/preflight.py      ← 启动前检查设备、拉起模拟器
+└── docs/ README.md LICENSE
+```
+
+> 别在这棵树下找 `assets/`：发布包里 `interface.json` 和 `resource/`
+> 是**直接跟 `MFAAvalonia.exe` 同层**的，这是 MFAAvalonia 的加载约定。
 
 ## 使用前准备
 
@@ -83,25 +131,18 @@
 > 所以 `tools/preflight.py` 会在启动前检查目标设备是不是 `127.0.0.1`，不是就**拒绝启动**。
 > 确实想在真机上跑：设环境变量 `MAACR_ALLOW_REMOTE=1` 显式放行（后果自负）。
 
-## 快速开始
+## 跑起来
 
-### 用现成界面（推荐）
-
-1. 装 [MFAAvalonia](https://github.com/MaaXYZ/MFAAvalonia) 与 **.NET 10 Runtime**；
-2. 装 Python 依赖：
-   ```bash
-   pip install -r agent/requirements.txt
-   ```
-   > 注意包名是 **MaaFw**，别装错成别的。
-3. 把 MFAAvalonia 的资源目录指向本仓库的 `assets/`（里面有 `interface.json`）；
-4. 选设备（**选 MuMu 的 `127.0.0.1:<端口>`**）、勾「自动对战」、把「最多打几局」设成 **1**；
-5. 点开始。看日志与 `debug/` 下的识别可视化图。
+1. 启动 MuMu（不用自己开游戏，工具会把它调到前台）；
+2. 开 `MFAAvalonia.exe`，选设备时**选 MuMu 的 `127.0.0.1:<端口>`**；
+3. 第一跑就勾「自动对战」，把「最多打几局」设成 **1**；
+4. 点开始，看日志与 `debug/` 下的识别可视化图。
 
 日常任务在同一页的「日常任务」分组里，也可以直接用「**日常一条龙**」预设一把跑完（商店 + 部落）。
 
 ### 只想验证它认不认得准
 
-勾上「演练模式（只识别不点击）」再跑 —— 它会截图、识别、打印决策，一次都不点。
+勾上「**演练模式（只识别不点击）**」再跑 —— 它会截图、识别、打印决策，一次都不点。
 **对战、商店、部落都吃这个开关**（不是只对战）。第一次跑强烈建议先这么来一遍，
 认得出的先认一遍再放它点。
 
@@ -110,15 +151,56 @@
 
 ### 命令行自检（不需要模拟器）
 
+发布包里也能跑，用的是自带的 Python：
+
 ```bash
-python tools/validate.py      # 校验资源引用、节点名、Custom 注册、interface 配置
-python tools/preflight.py --check   # 检查设备与模拟器状态，不做任何改动
+python/python.exe tools/validate.py             # 资源引用、节点名、Custom 注册、interface 配置
+python/python.exe tools/preflight.py --check    # 检查设备与模拟器状态，不做任何改动
 ```
 
 `tools/validate.py` 抓的是几类**不会报错、只会静默失效**的问题：
 模板图路径写错、`next` 指向不存在的节点、pipeline 用了没注册的 Custom 名、
-`interface.json` 的 `entry` 拼错、选项覆盖了不存在的节点。
-建议每次改完 pipeline 都跑一遍。
+`interface.json` 的 `entry` 拼错、选项覆盖了不存在的节点、`pretask` 路径不符合
+MFAAvalonia 的解析约定。
+建议每次改完 pipeline 都跑一遍（CI 里也是跑它）。
+
+## 从源码跑（开发）
+
+想改代码、加任务，就自己拉仓库跑。和发布包的区别是：**这里的 Python 要你自己装**。
+
+```bash
+git clone https://github.com/yu-echo/MaaCR
+cd MaaCR
+pip install -r agent/requirements.txt
+python tools/validate.py
+```
+
+然后把 MFAAvalonia 的**数据目录指向本仓库的 `assets/`**（`interface.json` 在里面），
+选 MuMu 设备、勾任务、点开始。
+
+> ⚠️ 改 `interface.json` 里 `agent` / `pretask` 的路径前，先读
+> [`docs/zh_cn/develop/release.md`](docs/zh_cn/develop/release.md)。
+> 这几个字段的**解析基准各不相同**，写错了不会报错、只会「点开始没反应」。
+
+### 开发时最常跑的几个命令
+
+```bash
+python tools/validate.py                        # 改完 pipeline / interface.json 必跑
+python tools/preflight.py --check                # 只检查设备与模拟器，不做改动
+python -m compileall -q agent tools              # 语法检查（CI 里也跑这个）
+```
+
+### 怎么发版
+
+打一个 `v*` 标签推上去，工作流会自动：下载 MaaFramework + MFAAvalonia → 装自带 Python
+→ 组装发布包 → 生成更新日志 → 建 GitHub Release 并附上 zip。
+
+```bash
+git tag v0.1.1 && git push origin v0.1.1
+```
+
+细节（产物结构、`interface.json` 的路径怎么改写、上游版本怎么锁、怎么本地试跑）在
+[`docs/zh_cn/develop/release.md`](docs/zh_cn/develop/release.md)。
 
 ## 调策略
 
@@ -146,17 +228,26 @@ python tools/preflight.py --check   # 检查设备与模拟器状态，不做任
 
 ## 目录结构
 
+> 这棵树是**源码仓库**的。发布包的布局不一样（`interface.json` 与 `resource/`
+> 跟 `MFAAvalonia.exe` 同层），见上面「包里的目录长这样」。
+
 ```
 MaaCR/
+├── .github/
+│   ├── workflows/
+│   │   ├── check.yml               #   push/PR：语法检查 + tools/validate.py
+│   │   └── install.yml             #   打 v* 标签：组装发布包并建 Release
+│   └── cliff.toml                  #   更新日志的分组规则
 ├── assets/
 │   ├── interface.json              # ProjectInterface V2：通用 UI 的入口
 │   └── resource/
 │       ├── default_pipeline.json   # 全局默认参数（延迟 / 匹配算法与阈值）
+│       ├── base/.gitkeep           # 空目录，但必须在（pretask 的工作目录）
 │       ├── image/                  # 模板图（720×1280 原生裁剪，勿缩放）
 │       │   ├── cards/              #   10 张手牌
 │       │   ├── anchors/            #   界面锚点（含开宝箱的多阶段素材）
 │       │   ├── nav/                #   底部导航图标（__ 分隔多状态）
-│       │   ├── shop/  clan/        #   日常任务：「免费」/「已收集」/「免费！」/「捐赠」
+│       │   └── shop/ clan/         #   日常任务：「免费」/「已收集」/「免费！」/「捐赠」
 │       ├── model/                  # OCR 模型位（当前不用 OCR，空目录）
 │       └── pipeline/               # 任务流水线
 │           ├── main.json           #   入口 + 状态分发
@@ -173,10 +264,13 @@ MaaCR/
 │   ├── cr_stuck.py                 #   「真卡住」判定（智能 + 画面定格）
 │   └── cr_nodes.py                 #   把上面这些注册成框架的 Custom 节点
 ├── tools/
-│   ├── validate.py                 #   项目自检（改了 pipeline 就跑）
-│   └── preflight.py                #   启动前准备：设备安全检查 + 拉起模拟器
+│   ├── validate.py                 #   项目自检（改了 pipeline 就跑；CI 也跑）
+│   ├── preflight.py                #   启动前准备：设备安全检查 + 拉起模拟器
+│   ├── install.py                  #   组装发布包（CI 调；也可本地跑）
+│   ├── install-deps-win.bat        #   装 .NET 10 桌面运行时（发布包里才用得上）
+│   └── ci/setup_embed_python.py    #   给发布包装一份自带 Python
 ├── deps/tools/                     # 官方 JSON Schema（编辑器补全 / 校验用）
-└── docs/zh_cn/                     # 迁移对照、识别原理、日常任务、排查手册
+└── docs/zh_cn/                     # 识别原理、日常任务、迁移对照、发布说明
 ```
 
 ## 设计要点
@@ -211,7 +305,9 @@ MaaCR/
 
 | 现象 | 先看这里 |
 | --- | --- |
+| **双击 `MFAAvalonia.exe` 报错、起不来** | 缺 .NET 10 桌面运行时。双击 `install-deps-win.bat`，装完**重启电脑** |
 | **所有识别都失分（匹配度 0.00）** | 大概率是**屏幕熄了** —— 模拟器闲置会自动熄屏，黑屏时模板匹配全军覆没。看 `CR.Boot` 的日志，或手动点亮模拟器 |
+| 点开始就报 `pretask failed` | 路径解析问题（`pretask.exec` 不走 PATH、工作目录是 `resource/base`）。跑一下 `tools/validate.py`，它会直接告诉你哪一行不对 |
 | 卡在某页不动 | 看日志有没有触发三级自愈。子页面（商店 / 社交 / 卡牌）没做锚点，本来就返回 unknown，靠①回主界面兜底 |
 | 报「界面未知」然后重启游戏 | 说明「认不出来 + 画面定格」同时成立。把那一屏截图发出来补个锚点就好 |
 | 一直不出牌 | 检查圣水门槛是否过高、手牌是否认得出（看日志的 `手牌=[...]`）。认不出就是卡面模板缺了精英形态 |
@@ -219,24 +315,27 @@ MaaCR/
 | 领商店第一屏就报「画面已静止（差 0.00），判定到底」 | 说明**重新截帧没生效**（拿到的是缓存帧）。这是日常任务最需要实机确认的一条，见 [`docs/zh_cn/daily.md`](docs/zh_cn/daily.md) 第五节 |
 | 关掉演练模式后它还是不动 | 老版本会把 `dry` 粘住（Agent 进程跨多次运行存活）。现在每次换任务都复位，日志里会有「（新任务 …）」。若仍复现，把这个现象发出来 |
 | 部落一个都没捐出去 | 看日志「看到 N 个「捐赠」按钮，其中可捐(亮绿) N 个」。可捐为 0 说明匹配到的都是灰按钮（自己发起的请求，本来就捐不了） |
-| 选错设备（驱动到真机了） | 该检查被跳过了。确认没设 `MAACR_ALLOW_REMOTE`，并检查 `tools/preflight.py` 的日志 |
+| 选错设备（驱动到真机了） | 该检查被跳过了。确认没设 `MAACR_ALLOW_REMOTE`，并检查「环境准备」的日志 |
 
 ## 路线图
 
 - [x] 阶段 1：最小闭环（主界面 → 进对战 → 出牌 → 结算 → 循环）
 - [x] 阶段 2：导航容错 + 三级自愈 + 重启游戏
 - [x] 阶段 3：日常任务——商店免费项、部落捐赠
-- [ ] 阶段 4：补锚点（部落聊天页、社交页、训练日预览页、商店各子标签），减少走兜底路径
-- [ ] 阶段 5：防守判断（识别己方半场的红血条 → 有敌人先防守），把胜率拉起来
-- [ ] 阶段 6：打包发布（附便携式 Python，改 `interface.json` 的 agent exec）
+- [x] 阶段 4：打包发布——GitHub Release + 自带 Python + 更新日志
+- [ ] 阶段 5：补锚点（部落聊天页、社交页、训练日预览页、商店各子标签），减少走兜底路径
+- [ ] 阶段 6：防守判断（识别己方半场的红血条 → 有敌人先防守），把胜率拉起来
+- [ ] `tools/validate.py` 增加官方 schema 校验（能抓「字段名写错」这类静默问题）
 - [ ] 多分辨率支持（坐标改按比例存 + 模板按分辨率分目录）
-- [ ] `tools/validate.py` 增加官方 schema 校验（能抓「字段名写错」这类静默问题；做法见 [`docs/zh_cn/develop/migration.md`](docs/zh_cn/develop/migration.md) 第五节末）
+- [ ] 日常任务实机验证（`docs/zh_cn/daily.md` 第五节列的那几条，都还没在真机上跑过）
 
 ## 鸣谢
 
 - [MaaFramework](https://github.com/MaaXYZ/MaaFramework) —— 本项目的框架
 - [MFAAvalonia](https://github.com/MaaXYZ/MFAAvalonia) —— 通用图形界面
-- [MaaPracticeBoilerplate](https://github.com/MaaXYZ/MaaPracticeBoilerplate) —— 目录约定与 Agent 写法的参考
+- [MaaPracticeBoilerplate](https://github.com/MaaXYZ/MaaPracticeBoilerplate) —— 目录约定、
+  发布流程与 Agent 写法的参考
+- [syoius/MaaYuan](https://github.com/syoius/MaaYuan) —— 发布包结构与 README 的参考
 
 ## License
 

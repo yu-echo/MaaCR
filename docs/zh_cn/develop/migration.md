@@ -243,9 +243,11 @@ python -m py_compile agent/*.py     # 语法检查通过
 3. **防守判断**（阶段 5，收益最大的一块）：识别己方半场的红血条（敌方单位）与蓝血条
    （我方单位），做成「有敌人先防守、防住再反推」。现在这套「只推一路、完全不守」的
    打法赢不了，这一层是把它变成能赢的前提。
-4. **打包发布**：参考 `MaaPracticeBoilerplate` 的 `.github/workflows/install.yml`，
-   附便携式 Python 并改 `interface.json` 里 agent 的 `exec` 字段 —— 注意现在有
-   **两个** Python 入口要打包：`agent/main.py`（Agent）与 `tools/preflight.py`（pretask）。
+4. ~~**打包发布**~~ **（已完成）**：`tools/install.py` + `tools/ci/setup_embed_python.py`
+   + `.github/workflows/install.yml`，打 `v*` 标签即出包并建 Release。
+   两个 Python 入口（`agent/main.py` 与 `tools/preflight.py`）都吃同一份自带 Python。
+   详见 [`release.md`](release.md)。**注意**：打包过程中发现 `pretask.exec` 的解析规则跟
+   文档写的不一样（不走 PATH、基准是 `resource/base`），顺手修掉了 —— 见 release.md 第二节。
 
 ---
 

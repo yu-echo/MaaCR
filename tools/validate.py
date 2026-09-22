@@ -12,7 +12,10 @@
      走到该节点直接失败；
   4. interface.json 里的 entry 指向不存在的节点 —— 点「开始」什么也不发生；
   5. interface.json 的 pipeline_override 覆盖了不存在的节点名 —— 覆盖静默无效，
-     表现为「这个选项点了没用」。
+     表现为「这个选项点了没用」；
+  6. interface.json 的 pretask 路径不符合 MFAAvalonia 的解析约定
+     （exec 不走 PATH、args 的基准是 resource/base，且 resource/base 必须存在）
+     —— 表现是「点开始就报 pretask failed」，整个环境准备环节形同不存在。
 
 用法（仓库根目录）：
     python tools/validate.py
@@ -34,6 +37,10 @@ RESOURCE = ASSETS / "resource"
 PIPELINE = RESOURCE / "pipeline"
 IMAGE = RESOURCE / "image"
 AGENT = ROOT / "agent"
+
+# MFAAvalonia 跑 pretask 时用的工作目录，同时也是 pretask.exec 的解析基准。
+# 详见 check_interface() 里 _check_pretask_exec 的注释。
+RESOURCE_BASE = RESOURCE / "base"
 
 problems: list[str] = []
 notes: list[str] = []
@@ -292,13 +299,15 @@ def check_interface(nodes):
             if o not in defined:
                 fail("setting「%s」引用了未定义的选项：%s" % (s.get("name"), o))
 
-    # agent / pretask 里写的路径都要真的存在（相对 interface.json 所在目录解析）
+    # agent / pretask 里写的路径都要真的存在。**两者的基准不一样**，别混：
+    #   agent.child_args  -> 「数据目录」，开发时就是 assets/（interface.json 所在目录）
+    #   pretask.args      -> pretask 的工作目录，即 assets/resource/base
     agent = data.get("agent")
     if agent:
         if not (agent or {}).get("child_exec"):
             fail("interface.json 的 agent 缺少 child_exec")
         for a in (agent or {}).get("child_args") or []:
-            _check_rel_path("agent 的 child_args", a)
+            _check_rel_path("agent 的 child_args", a, ASSETS)
 
     for pt in _as_list(data.get("pretask")):
         if not isinstance(pt, dict):
@@ -306,8 +315,19 @@ def check_interface(nodes):
             continue
         if not pt.get("exec"):
             fail("interface.json 的 pretask 缺少 exec")
+            continue
+        where = pt.get("name") or pt.get("exec")
+        _check_pretask_exec(where, pt.get("exec"))
         for a in pt.get("args") or []:
-            _check_rel_path("pretask「%s」的 args" % (pt.get("name") or pt.get("exec")), a)
+            _check_rel_path("pretask「%s」的 args" % where, a, RESOURCE_BASE)
+
+    # pretask 的工作目录必须真的存在，否则 Process.Start 直接报「目录名无效」
+    if not RESOURCE_BASE.is_dir():
+        fail("缺少 %s —— 它是 pretask 的工作目录。\n"
+             "      MFAAvalonia（v2.16.1）把 pretask 的 WorkingDirectory 写死成这个路径，\n"
+             "      目录不存在时子进程根本起不来，「环境准备」那道闸门等于没有。\n"
+             "      建个空目录（放个 .gitkeep 说明原因）即可。"
+             % RESOURCE_BASE.relative_to(ROOT))
 
 
 def _as_list(value):
@@ -316,20 +336,52 @@ def _as_list(value):
     return value if isinstance(value, list) else [value]
 
 
-def _check_rel_path(where, raw):
-    """只检查看起来是「仓库内文件」的路径：带 ./ ../ 或 .py 结尾。
+def _looks_absolute(raw: str) -> bool:
+    """绝对路径：Unix 的 / 开头、Windows 的盘符，或 UNC。"""
+    return bool(raw.startswith(("/", "\\")) or re.match(r"^[A-Za-z]:", raw))
 
-    刻意不去校验 "python" 这种 PATH 里的可执行文件名。
+
+def _check_pretask_exec(where, raw):
+    """pretask.exec 不能写「命令名」—— 它不会去 PATH 里找。
+
+    MFAAvalonia v2.16.1（MaaProcessor.cs）对 pretask.exec 做的是
+        ReplacePlaceholder(exec, ResourceBase)
+    而没有占位符时，ReplacePlaceholder 走的是 Path.Combine(ResourceBase, exec)，
+    也就是把它当成 resource/base 下的相对路径。于是写 "python" 会拼出
+    「…/resource/base/python」这个不存在的文件，pretask 启动即失败。
+
+    官方文档写的是「可以是系统 PATH 中的可执行文件，例如 python」，与实现对不上 ——
+    所以这里挡一下，免得再踩。
+    """
+    if not isinstance(raw, str) or not raw:
+        return
+    if _looks_absolute(raw):
+        return                                  # 绝对路径：与仓库布局无关，不拦
+    fail("pretask「%s」的 exec 是相对路径：%r\n"
+         "      MFAAvalonia 会把它拼成 <数据目录>/resource/base/… 再去找，而且不走 PATH ——\n"
+         "      写命令名（比如 \"python\"）一定失败；写资源目录里的相对路径也得从这个基准数。\n"
+         "      两种可行写法：① 绝对路径（如 C:/Windows/System32/cmd.exe，再让 args 去调真命令）；\n"
+         "      ② 相对 resource/base 的路径。详见 assets/interface.json 里 pretask 的注释。"
+         % (where, raw))
+
+
+def _check_rel_path(where, raw, base):
+    """检查「指向仓库内文件」的路径是否真的存在，基准目录由调用方给。
+
+    只为看起来是路径的东西检查：带 ./ ../ 或 .py 结尾。
+    刻意不校验 "python" 这类 PATH 里的名字，也不校验绝对路径（跟仓库布局无关）。
     """
     if not isinstance(raw, str):
+        return
+    if _looks_absolute(raw):
         return
     looks_like_path = raw.startswith(("./", "../")) or raw.endswith(".py")
     if not looks_like_path:
         return
-    target = (ASSETS / raw).resolve()
+    target = (base / raw).resolve()
     if not target.is_file():
-        fail("%s 指向不存在的文件：%s\n      （相对 interface.json 解析，即 %s）"
-             % (where, raw, target))
+        fail("%s 指向不存在的文件：%s\n      （相对 %s 解析，即 %s）"
+             % (where, raw, base.relative_to(ROOT), target))
 
 
 def main() -> int:
@@ -349,7 +401,7 @@ def main() -> int:
     print("检查 Custom 注册：识别 %d 个 / 动作 %d 个" % (n_reco, n_act))
 
     check_interface(nodes)
-    print("检查 interface.json")
+    print("检查 interface.json（含 pretask 路径约定）")
 
     print("=" * 60)
     for n in notes:

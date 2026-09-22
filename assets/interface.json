@@ -44,11 +44,32 @@
     "pretask": {
         // 控制器建立**之前**执行：① 确认目标是本地模拟器而不是插着的真机；
         // ② 模拟器没在跑就自己拉起来。非零退出会中止启动，正好当闸门用。
+        //
+        // ⚠️ 这两行的写法是两个坑逼出来的，别顺手「简化」回去：
+        //
+        // 1) exec **不走 PATH 查找**。MFAAvalonia 把它当成「<数据目录>/resource/base」
+        //    下的相对路径，直接 Path.Combine 拼接（v2.16.1 源码 MaaProcessor.cs：
+        //    ReplacePlaceholder(preTask.Exec, ResourceBase)，而 ResourceBase =
+        //    DataRoot/resource/base）。所以哪怕写成 "python"，拼出来的也是
+        //    「…/resource/base/python」这样一个不存在的文件，启动即失败 ——
+        //    官方文档说「可以直接写 python」，跟实现对不上。
+        //    → 绕法：拿绝对路径的 cmd.exe 当壳，真正要跑的命令交给它，由 cmd 去 PATH 里找。
+        //
+        // 2) args 跟 exec **不是一个基准**：args 是按「工作目录」解析的，
+        //    而工作目录同样是 resource/base。所以要从 assets/resource/base
+        //    往上三层才回到仓库根。
+        //
+        // 另外 assets/resource/base/ 这个空目录本身也必须存在（见那里的 .gitkeep）：
+        // 工作目录不存在的话，Process.Start 一样会报「目录名无效」。
+        //
+        // 发布包里这两行由 tools/install.py 改写成指向自带 Python 的版本。
         "name": "环境准备",
         "label": "环境准备（检查设备 + 启动模拟器）",
-        "exec": "python",
+        "exec": "C:/Windows/System32/cmd.exe",
         "args": [
-            "../tools/preflight.py"
+            "/c",
+            "python",
+            "../../../tools/preflight.py"
         ]
     },
     "group": [

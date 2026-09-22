@@ -179,21 +179,61 @@ python tools/validate.py
 
 ---
 
-## 六、还没验证的地方
+## 六、踩过的坑（都是第一次真跑 CI 才暴露的）
 
-说实话，这一套是照着上游的实现和几个真实发布项目推出来的，**没有真的端到端跑过一次**：
+### 6.1 非中文 Windows 上，入口脚本会崩在第一行日志
 
-- [ ] 发布包在干净 Windows 上解压 → 双击 → 真的能起（含缺 .NET 时的 `install-deps-win.bat`）
-- [ ] 自带 Python 的 `pip install` 在 CI 里能通（本地能通不代表 CI 网络能通）
-- [ ] `pretask` 在**发布包布局**下真的能找到 `python/python.exe` 并跑起来
-- [ ] MFAAvalonia 的 win-x64 zip 解压后 `MFAAvalonia.exe` 确实在**压缩包根**（`install.py` 会检查）
-- [ ] MFAAvalonia 的 zip 里没有同名 `resource/` 跟我们的资源打架
+Python 的 `stdout` 默认按**系统代码页**编码：中文 Windows 是 GBK，扛得住中文；
+英文 / 西欧 Windows 是 **cp1252**，`print()` 任何中文都直接 `UnicodeEncodeError`
+把进程打死。
 
-第一次跑发布工作流的时候，这几条会一次性暴露出来 —— 看日志就知道卡在哪。
+这条在 CI 上的表现极具误导性：`setup_embed_python.py` 崩在「下载」之前，
+报出来却像是「这个源不行」，很容易误判成网络问题；`preflight.py` /
+`agent/main.py` 崩在第一行，看起来像「Agent 压根没启动」。
+
+所以本仓库的 5 个入口 —— `agent/main.py`、`tools/preflight.py`、`tools/validate.py`、
+`tools/install.py`、`tools/ci/setup_embed_python.py` —— 开头都有一段：
+
+```python
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+```
+
+**新加入口时照抄这段。** 本地测法：`PYTHONIOENCODING=cp1252 python 你的脚本.py`。
+
+### 6.2 `upload-artifact` 默认不收隐藏文件
+
+`resource/base/` 里只有一个 `.gitkeep`。`actions/upload-artifact@v4` 默认
+`include-hidden-files: false`，而**空目录也不会被存进产物** —— 两个因素叠加，
+解压出来就没有 `resource/base/`，pretask 的工作目录不存在，
+「环境准备」直接报「目录名无效」，等于把第二节修掉的坑原样还回去。
+
+已经给上传步骤加上 `include-hidden-files: true`，并在 `tools/install.py` 里加了
+`verify_layout()`：8 条关键路径逐条核对，缺一条就中止打包。
 
 ---
 
-## 七、参考
+## 七、还没验证的地方
+
+这一套已经过了「分支构建（`-ci.` 预览包）」这一关，但下面这些只有真发一版、真在用户机器上跑
+才能确认：
+
+- [x] ~~上游 zip 里 `MFAAvalonia.exe` 是否真在压缩包根~~ —— **已确认在**（CI 日志里
+      `ls install/` 的输出就是 `MFAAvalonia.exe` 打头）
+- [x] ~~自带 Python 的 `pip install` 在 CI 里能不能通~~ —— **已通**
+- [x] ~~打包脚本本身能不能在 windows runner 上跑完~~ —— **已通**
+- [ ] 发布包在**干净 Windows** 上解压 → 双击 → 真的能起（含缺 .NET 时的 `install-deps-win.bat`）
+- [ ] `pretask` 在**发布包布局**下能找到 `python/python.exe` 并跑起来
+      （本地已按相同层数与工作目录验证过，但没在真机上端到端跑）
+- [ ] MFAAvalonia 的 zip 里没有同名 `resource/` 跟我们的资源打架
+- [ ] 用户机器上 MuMu 的 `adb` 能不能被 `preflight.py` 找到（现在找不到也不致命，会放行）
+
+---
+
+## 八、参考
 
 - [MaaPracticeBoilerplate 的 install.yml](https://github.com/MaaXYZ/MaaPracticeBoilerplate/blob/main/.github/workflows/install.yml)
   —— 本仓库工作流的骨架（tag 计算、changelog、release 三段照搬）

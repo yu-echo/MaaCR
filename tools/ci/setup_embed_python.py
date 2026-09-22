@@ -200,12 +200,16 @@ def main() -> int:
               "--disable-pip-version-check", "-r", req])
 
     # 装完立刻验一次：这一步才是「真的能用」，pip 没报错不算数。
-    # ⚠️ 注意 import 名是 `maa`，不是 PyPI 上的包名 `MaaFw` —— 两个不一样，
-    #    写 `import MaaFw` 会误报成「装了却 import 不到」。
-    run(exe, ["-c",
+    # ⚠️ 两个坑叠在一起，实测在 CI 上翻过车：
+    #   1) import 名是 `maa`，不是 PyPI 上的包名 `MaaFw` —— 写 `import MaaFw` 会误报成
+    #      「装了却 import 不到」，然后跑去瞎折腾 ._pth；
+    #   2) 这一行是**另一个进程**（自带的 Python），上面那段 reconfigure 管不到它。
+    #      它默认还是 cp1252，打印中文会 UnicodeEncodeError —— 所以：
+    #      `-X utf8` 强制它走 UTF-8，打印内容也只用 ASCII。
+    run(exe, ["-X", "utf8", "-c",
               "import maa, cv2, numpy;"
-              "print('自带 Python 可用 -> maa', maa.__file__);"
-              "print('cv2', cv2.__version__, '/ numpy', numpy.__version__)"])
+              "print('[ok] bundled python: maa=%s cv2=%s numpy=%s'"
+              " % (maa.__file__, cv2.__version__, numpy.__version__))"])
 
     log("就绪：%s" % exe)
     return 0

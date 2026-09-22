@@ -218,18 +218,31 @@ for _stream in (sys.stdout, sys.stderr):
 
 ## 七、还没验证的地方
 
-这一套已经过了「分支构建（`-ci.` 预览包）」这一关，但下面这些只有真发一版、真在用户机器上跑
-才能确认：
+这一套已经走通「分支构建（`-ci.` 预览包）」与「正式发版（v0.1.0）」两条路，
+下面这些是已经确认过的：
 
-- [x] ~~上游 zip 里 `MFAAvalonia.exe` 是否真在压缩包根~~ —— **已确认在**（CI 日志里
-      `ls install/` 的输出就是 `MFAAvalonia.exe` 打头）
-- [x] ~~自带 Python 的 `pip install` 在 CI 里能不能通~~ —— **已通**
-- [x] ~~打包脚本本身能不能在 windows runner 上跑完~~ —— **已通**
+- [x] ~~上游 zip 里 `MFAAvalonia.exe` 是否真在压缩包根~~ —— **在**。
+      平铺之后 `install/` 顶层就是：
+      `DependencySetup_依赖库安装_win.bat`、`MFAAvalonia.deps.json`、
+      `MFAAvalonia.dll`、`MFAAvalonia.exe`、`MFAAvalonia.runtimeconfig.json`、
+      `MaaAgentBinary`、`libloader.dll`、`libs`、`plugins`
+- [x] ~~MFAAvalonia 的 zip 里有没有同名 `resource/` 跟我们的资源打架~~ —— **没有**，它不带 `resource/`
+- [x] ~~自带 Python 的 `pip install` 在 CI 里能不能通~~ —— **通了**
+      （MaaFw 5.13.1 / opencv-python 5.0.0.93 / numpy 2.4.6）
+- [x] ~~打包脚本能不能在 windows runner 上跑完~~ —— **能**
+- [x] ~~上传 / 打包两个环节会不会把 `resource/base/` 弄丢~~ —— **没丢**，
+      已用 Range 请求直接读发布出去的 zip 的中央目录确认过，`resource/base/.gitkeep` 在
+
+还剩这些，只有真在用户机器上跑才能确认：
+
 - [ ] 发布包在**干净 Windows** 上解压 → 双击 → 真的能起（含缺 .NET 时的 `install-deps-win.bat`）
 - [ ] `pretask` 在**发布包布局**下能找到 `python/python.exe` 并跑起来
-      （本地已按相同层数与工作目录验证过，但没在真机上端到端跑）
-- [ ] MFAAvalonia 的 zip 里没有同名 `resource/` 跟我们的资源打架
+      （本地已按完全相同的层数与工作目录验证过，但没在真机上端到端跑）
 - [ ] 用户机器上 MuMu 的 `adb` 能不能被 `preflight.py` 找到（现在找不到也不致命，会放行）
+
+> 顺带一提：MFAAvalonia 自己带了一个 `DependencySetup_依赖库安装_win.bat`（也是装 .NET 的）。
+> 我们那个 `install-deps-win.bat` 是重复造轮子，但名字更直白、README 里直接点了它，
+> 先留着；哪天想精简可以去一个。
 
 ---
 

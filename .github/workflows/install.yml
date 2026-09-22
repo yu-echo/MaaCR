@@ -159,6 +159,11 @@ jobs:
     if: ${{ needs.meta.outputs.is_release == 'true' }}
     needs: [meta, install, changelog]
     runs-on: ubuntu-latest
+    # ★ 必须显式声明。仓库默认的 GITHUB_TOKEN 是只读的，不加这一行
+    #   softprops/action-gh-release 会直接 403：Resource not accessible by integration。
+    #   只给 release 这一步，别图省事写在顶层把写权限摊给所有作业。
+    permissions:
+      contents: write
     steps:
       - uses: actions/download-artifact@v4
         with:

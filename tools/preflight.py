@@ -32,6 +32,16 @@ import sys
 import time
 from pathlib import Path
 
+# Windows 的 stdout 默认按系统代码页编码：中文 Windows 是 GBK 能扛住，
+# 英文 / 西欧 Windows 是 cp1252，打一行中文就 UnicodeEncodeError 把脚本打死。
+# 本脚本是被 MFAAvalonia 以子进程拉起来的，崩在这一步会表现成「环境准备直接失败」，
+# 而真正的错误信息反而看不到 —— 所以先把这个隐患掐掉。
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
 REPO = Path(__file__).resolve().parent.parent
 
 CR_PKG = "com.tencent.tmgp.supercell.clashroyale"

@@ -13,6 +13,16 @@ socket_id 由通用 UI 生成并作为最后一个参数传进来。
 import os
 import sys
 
+# Windows 的 stdout 默认按系统代码页编码：中文 Windows 是 GBK，扛得住中文；
+# 英文 / 西欧 Windows 是 cp1252，打印任何中文都会 UnicodeEncodeError 把进程打死 ——
+# 而且崩的是第一行日志，看起来会像「Agent 压根没启动」。
+# 统一改成 UTF-8，并把编不出来的字符降级成 "?"：日志永远不该成为崩的原因。
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
 from maa.agent.agent_server import AgentServer
 from maa.toolkit import Toolkit
 

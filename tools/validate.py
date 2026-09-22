@@ -31,6 +31,15 @@ import re
 import sys
 from pathlib import Path
 
+# Windows 的 stdout 默认按系统代码页编码：英文 / 西欧 Windows 是 cp1252，
+# 打一行中文就 UnicodeEncodeError 把脚本打死（发布包里也会跑这个脚本）。
+# 统一改成 UTF-8 并允许降级替换，别让日志把检查本身搞崩。
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
 ROOT = Path(__file__).resolve().parent.parent
 ASSETS = ROOT / "assets"
 RESOURCE = ASSETS / "resource"

@@ -28,6 +28,14 @@ import shutil
 import sys
 from pathlib import Path
 
+# Windows 的 stdout 默认按系统代码页编码：CI 的 windows runner 是 cp1252，
+# 打一行中文就 UnicodeEncodeError 把打包脚本打死（实测踩过）。
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
 # 复用 tools/validate.py 里的 JSONC 解析器（它已经在 CI 里跑着，没必要再抄一份）
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from validate import load_jsonc  # noqa: E402
@@ -179,6 +187,32 @@ def install_chores() -> None:
     copy_dir(ROOT / "docs" / "zh_cn", INSTALL / "docs" / "zh_cn")
 
 
+# ==================== 5. 出包后自证 ====================
+
+# 出包这一层最容易「看起来成功了，装出来却跑不起来」，所以逐条点一遍。
+# 尤其 resource/base 那一条：它里面只有一个 .gitkeep，一旦打包/上传环节把隐藏文件
+# 丢掉，空目录也不会被存下来，pretask 的工作目录就没了。
+MUST_EXIST = (
+    "MFAAvalonia.exe",
+    "interface.json",
+    "resource/pipeline/main.json",
+    "resource/base",
+    "agent/main.py",
+    "tools/preflight.py",
+    "python/python.exe",
+    "runtimes/win-x64/native",
+)
+
+
+def verify_layout() -> None:
+    missing = [rel for rel in MUST_EXIST if not (INSTALL / rel).exists()]
+    if missing:
+        for rel in missing:
+            print("  ✗ 少了 %s" % rel)
+        die("发布包不完整 —— 上面这些是跑起来的必要条件，别就这么发出去。")
+    print("  · 关键路径 %d 项都在" % len(MUST_EXIST))
+
+
 # ==================== 入口 ====================
 
 def main() -> int:
@@ -204,6 +238,9 @@ def main() -> int:
     install_tools()
     print("[4/4] 说明文件")
     install_chores()
+
+    print("[检查] 出包后自证")
+    verify_layout()
 
     print("\n完成：%s" % INSTALL)
     return 0

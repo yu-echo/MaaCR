@@ -41,6 +41,15 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
+# ★ 必须放在最前面：CI 用的 windows runner 控制台是 cp1252，
+#   本脚本第一行日志就是中文，不做这一步会 UnicodeEncodeError 直接崩 ——
+#   而且是崩在「下载」之前，表现成「这个源不行」，很容易误判成网络问题（实测踩过）。
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
 ROOT = Path(__file__).resolve().parent.parent.parent
 
 # 3.11 是 embed 包最成熟、轮子最齐的一档；opencv-python / numpy 在它上面都有现成

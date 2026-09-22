@@ -124,6 +124,10 @@ jobs:
         with:
           name: MaaCR-win-x86_64
           path: "install"
+          # ★ 必须开：默认不传隐藏文件，而 resource/base/ 里只有一个 .gitkeep ——
+          #   一旦它被丢掉，空目录也不会被存进产物，解压出来就没有 resource/base/，
+          #   pretask 的工作目录不存在，环境准备直接报「目录名无效」。
+          include-hidden-files: true
 
   changelog:
     name: 生成更新日志

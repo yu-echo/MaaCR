@@ -165,15 +165,34 @@ def load_pipelines():
 
 # ==================== 各专项检查 ====================
 
-TEMPLATE_KEYS = ("template",)
+
+def _params(block, kind):
+    """取某节点的「识别参数」或「动作参数」所在的 dict。
+
+    ⚠️ 要同时认两种写法（2026-09-23 项目转成 MaaYuan 风格后必须支持）：
+
+      对象写法（现在用的）：{"recognition": {"type": "TemplateMatch",
+                                            "param": {"template": ..., "threshold": ...}}}
+      平铺写法（旧版）：    {"recognition": "TemplateMatch", "template": ...}
+
+    对象写法下参数在 `recognition.param` / `action.param` 里；平铺写法下参数
+    与 recognition/action 同级，所以直接返回 block 本身。
+
+    ⚠️ 认不出来的后果不是报错，而是**静默漏检**：模板找不到、Custom 名没注册
+    这类问题全会「全部通过」。所以这个函数是这次改造的重点，不是顺手加的。
+    """
+    node = block.get(kind)
+    if isinstance(node, dict):
+        return node.get("param") or {}
+    return block
 
 
 def check_templates(nodes, node_to_file):
     """pipeline 引用的每张模板图都要真的存在。"""
     checked = 0
     for name, body in nodes.items():
-        for key in TEMPLATE_KEYS:
-            val = body.get(key)
+        for block in walk_recognition_blocks(body):
+            val = _params(block, "recognition").get("template")
             if val is None:
                 continue
             items = val if isinstance(val, list) else [val]
@@ -189,12 +208,19 @@ def check_templates(nodes, node_to_file):
 
 
 def walk_recognition_blocks(body):
-    """把节点里所有「识别定义」子块（含 And/Or 内联项）都吐出来。"""
+    """把节点里所有「识别定义」子块（含 And/Or 内联项）都吐出来。
+
+    内联子块的写法也换了：现在是
+        "recognition": {"type": "And", "param": {"all_of": [ {...}, {...} ]}}
+    所以要先从 recognition.param 里取 all_of / any_of，再逐个吐出来（递归，
+    子块里还可能有自己的 all_of）。
+    """
     yield body
     for key in ("all_of", "any_of"):
-        for sub in body.get(key) or []:
+        for sub in _params(body, "recognition").get(key) or []:
             if isinstance(sub, dict):
-                yield sub
+                for item in walk_recognition_blocks(sub):
+                    yield item
 
 
 def check_refs(nodes, node_to_file):
@@ -220,9 +246,11 @@ def check_refs(nodes, node_to_file):
                     fail("%s 的 %s 指向不存在的节点：%s" % (name, key, raw))
 
         for block in walk_recognition_blocks(body):
-            # roi / target 写成字符串时是「引用另一个节点名」
-            for key in ("roi", "target"):
-                val = block.get(key)
+            # roi / target 写成字符串时是「引用另一个节点名」。
+            # roi 属于识别参数、target 属于动作参数 —— 对象写法下它们在不同的
+            # 子对象里，所以要分开取（_params 已兼容两种写法）。
+            for key, kind in (("roi", "recognition"), ("target", "action")):
+                val = _params(block, kind).get(key)
                 if isinstance(val, str) and not val.startswith("[Anchor]"):
                     refs += 1
                     if val not in nodes:
@@ -237,7 +265,7 @@ def check_custom_names(nodes):
         for f in sorted(AGENT.rglob("*.py")):
             src += f.read_text(encoding="utf-8", errors="replace")
     if not src:
-        fail("读不到 agent/ 下的任何 Python 源码，无法校验 Custom 名")
+        note("没有 agent/ —— 纯 JSON 化完成，跳过「Custom 名必须注册」这项检查")
         return 0, 0
 
     registered_reco = set(re.findall(r'custom_recognition\(\s*["\']([^"\']+)["\']', src))
@@ -247,18 +275,16 @@ def check_custom_names(nodes):
     used_act = set()
     for name, body in nodes.items():
         for block in walk_recognition_blocks(body):
-            if block.get("recognition") == "Custom" or "custom_recognition" in block:
-                cn = block.get("custom_recognition")
-                if cn:
-                    used_reco.add(cn)
-                    if cn not in registered_reco:
-                        fail("%s 用到未注册的自定义识别：%s" % (name, cn))
-        if body.get("action") == "Custom" or "custom_action" in body:
-            ca = body.get("custom_action")
-            if ca:
-                used_act.add(ca)
-                if ca not in registered_act:
-                    fail("%s 用到未注册的自定义动作：%s" % (name, ca))
+            cn = _params(block, "recognition").get("custom_recognition")
+            if cn:
+                used_reco.add(cn)
+                if cn not in registered_reco:
+                    fail("%s 用到未注册的自定义识别：%s" % (name, cn))
+        ca = _params(body, "action").get("custom_action")
+        if ca:
+            used_act.add(ca)
+            if ca not in registered_act:
+                fail("%s 用到未注册的自定义动作：%s" % (name, ca))
 
     for cn in sorted(registered_reco - used_reco):
         note("已注册但 pipeline 没用到（可能是留给后续任务的）：自定义识别 %s" % cn)
@@ -528,6 +554,57 @@ def check_default_pipeline() -> int:
     return n
 
 
+def check_agent_image_root() -> int:
+    """检查 **Agent 侧**的图片根目录能不能解析、模板是不是齐的。
+
+    ⚠️ 这一条是 2026-09-23 发版实测踩了 P0 之后补上的：
+    `cr_config.image_root()` 当时只会拼 `<root>/assets/resource/image`，而发布包
+    把 `assets/` 的内容**拍平**到了包根（图片在 `<root>/resource/image`），
+    于是**发布包里一个模板都加载不到**，10 个 Custom 节点在入口处全部抛
+    FileNotFoundError，四个任务一个都跑不起来 —— 而那时本脚本报的是「全部通过」。
+
+    为什么以前漏了：上面 check_templates 校验的是 **pipeline 里的 template 引用**
+    （相对 resource/ 解析，那是对的），跟 Agent 自己拼的路径完全是两套。
+    所以这里单独按 Agent 的算法（直接 import cr_config）核一遍。
+    """
+    import importlib.util
+
+    root = AGENT / "cr_config.py"
+    if not root.is_file():
+        # 纯 JSON 化之后没有 agent/，这条检查自然不适用
+        return 0
+
+    spec = importlib.util.spec_from_file_location("_maacr_cfg", root)
+    mod = importlib.util.module_from_spec(spec)
+    try:
+        spec.loader.exec_module(mod)
+    except Exception as exc:                       # noqa: BLE001
+        fail("agent/cr_config.py 导入失败：%s" % exc)
+        return 0
+
+    img = mod.image_root()
+    if not img.is_dir():
+        fail("Agent 侧图片根目录不存在：%s\n"
+             "      cr_config.image_root() 必须同时兼容源码布局（assets/resource/image）\n"
+             "      与发布包布局（resource/image，CI 会把 assets/ 拍平）。" % img)
+        return 0
+
+    missing = []
+    for cid in getattr(mod, "CARDS", {}):
+        if not (img / "cards" / (cid + ".png")).is_file():
+            missing.append("cards/%s.png" % cid)
+    for sub in ("anchors", "nav", "shop", "clan"):
+        d = img / sub
+        if not d.is_dir() or not any(d.glob("*.png")):
+            missing.append("%s/（目录为空或不存在）" % sub)
+
+    if missing:
+        fail("Agent 侧模板缺失（%s 下）：\n      %s" % (img, "\n      ".join(missing)))
+        return 0
+
+    return len(list(img.rglob("*.png")))
+
+
 def main() -> int:
     print("MaaCR 项目自检")
     print("=" * 60)
@@ -549,6 +626,9 @@ def main() -> int:
 
     n_dp = check_default_pipeline()
     print("检查 default_pipeline.json：%d 个识别算法块" % n_dp)
+
+    n_img = check_agent_image_root()
+    print("检查 Agent 侧图片根目录：%d 个模板" % n_img)
 
     print("=" * 60)
     for n in notes:

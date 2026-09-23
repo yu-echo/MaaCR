@@ -1,44 +1,187 @@
 {
-    "商店任务": {
-        "recognition": "DirectHit",
-        "action": "Custom",
-        "custom_action": "CR.Boot",
-        "next": [
-            "登录页",
-            "商店领免费项"
-        ]
-    },
-    "商店领免费项": {
-        "recognition": "DirectHit",
-        "action": "Custom",
-        "custom_action": "CR.ClaimShopFree",
-        "next": [
-            "日常收尾回主界面"
-        ]
-    },
-    "部落任务": {
-        "recognition": "DirectHit",
-        "action": "Custom",
-        "custom_action": "CR.Boot",
-        "next": [
-            "登录页",
-            "部落捐赠"
-        ]
-    },
-    "部落捐赠": {
-        "recognition": "DirectHit",
-        "action": "Custom",
-        "custom_action": "CR.ClanDonate",
-        "custom_action_param": {
-            "donate_rounds": 4
+    // ★ 日常任务：纯 JSON 版（2026-09-23）。
+    //
+    // 文字识别改用框架的 `OCR`。**OCR 没有 green_mask**（协议里那只给
+    // TemplateMatch / FeatureMatch），它的颜色处理是 `color_filter`：
+    // 填一个 ColorMatch 节点名，先按那个节点的色域二值化，再送 OCR。
+    // 这正是旧版「白字掩码」的协议原生等价物 —— 见下面的「白字掩码」节点。
+    //
+    // 循环不用 while 了，改成**自环**：领一张 -> 回自己 -> 再领一张；
+    // 领不出来（OCR 找不到「免费」了）就走 on_error 去判断下一屏还是收工。
+
+    // 只做颜色二值化的辅助节点：游戏 UI 文字都是「白字 + 深色描边」，
+    // 所以按「够白」筛一遍，就把底色/卡面整个忽略掉了。
+    // ⚠️ 阈值要严（V≥225 且 S≤40）：宽松一点会把浅灰底整张卡算成白，掩码变实心块。
+    // 它自己不参与流程，只被 OCR 的 color_filter 引用（协议：只取 method/lower/upper）。
+    "白字掩码": {
+        "recognition": {
+            "type": "ColorMatch",
+            "param": {
+                "roi": [0, 0, 1, 1],
+                "method": 40,
+                "lower": [0, 0, 225],
+                "upper": [180, 40, 255],
+                "count": 1
+            }
         },
-        "next": [
-            "日常收尾回主界面"
-        ]
+        "action": {"type": "DoNothing", "param": {}}
     },
-    "日常收尾回主界面": {
-        "recognition": "DirectHit",
-        "action": "Custom",
-        "custom_action": "CR.GoMain"
+
+    // ——— 商店 ———
+    "商店任务": {
+        "recognition": {"type": "DirectHit", "param": {}},
+        "action": {"type": "DoNothing", "param": {}},
+        "next": ["环境准备", "登录页", "商店领免费项"]
+    },
+    // 领一张：OCR 认「免费」两个字 -> 点它。
+    // ⚠️ target_offset 往上挪 175px 是必须的：「免费」写在卡片**底部**，
+    //    直接点文字容易点到卡片下沿或网格缝隙 —— 「点了没反应」就是这么来的。
+    "商店领免费项": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": "免费",
+                "roi": [0, 150, 720, 1160],
+                "threshold": 0.3,
+                "color_filter": "白字掩码"
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": true,
+                "target_offset": [0, -175, 0, 0]
+            }
+        },
+        "post_delay": 2500,
+        "next": ["商店确认免费"],
+        "on_error": ["商店已领完检查"]
+    },
+    // 弹窗里的绿色「免费！」—— 这个仍然用**模板**（原色匹配）。
+    // 为什么不换 OCR：弹窗底色固定，原色模板实测 0.85 稳；而且「先认出再点」
+    // 是硬要求 —— 盲点固定坐标会按到隔壁那张要花宝石的卡上。
+    "商店确认免费": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "template": "shop/free_confirm.png",
+                "threshold": 0.85
+            }
+        },
+        "action": {"type": "Click", "param": {"target": true}},
+        "post_delay": 2500,
+        "next": ["商店领免费项"],
+        "on_error": ["商店领免费项"]
+    },
+    // 这一屏没有「免费」了 —— 看到「已收集！」说明今天领完了，收工；否则往下滑。
+    "商店已领完检查": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": "已收集",
+                "roi": [0, 150, 720, 1160],
+                "threshold": 0.3,
+                "color_filter": "白字掩码"
+            }
+        },
+        "action": {"type": "DoNothing", "param": {}},
+        "post_delay": 300,
+        "next": ["收尾回主界面"],
+        "on_error": ["商店滑一屏"]
+    },
+    // 必须**慢滑**：商店内容是懒加载的，滑太快会滑过还没渲染出来的内容。
+    "商店滑一屏": {
+        "recognition": {"type": "DirectHit", "param": {}},
+        "action": {
+            "type": "Swipe",
+            "param": {
+                "begin": [360, 950, 1, 1],
+                "end": [[360, 620, 1, 1]],
+                "duration": 1200
+            }
+        },
+        "post_delay": 1600,
+        "max_hit": 120,
+        "next": ["商店领免费项"]
+    },
+
+    // ——— 部落 ———
+    "部落任务": {
+        "recognition": {"type": "DirectHit", "param": {}},
+        "action": {"type": "DoNothing", "param": {}},
+        "next": ["环境准备", "登录页", "部落进入聊天"]
+    },
+    // 进部落聊天：先点底部「社交」，再点顶部「聊天」入口。
+    // 分工两个节点是因为中间要等一下页面切过去。
+    "部落进入聊天": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "template": "nav/social.png",
+                "roi": [0, 1140, 720, 140],
+                "threshold": 0.6
+            }
+        },
+        "action": {"type": "Click", "param": {"target": true}},
+        "post_delay": 2500,
+        "next": ["部落点聊天入口"],
+        "on_error": ["部落点聊天入口"]
+    },
+    "部落点聊天入口": {
+        "recognition": {"type": "DirectHit", "param": {}},
+        "action": {"type": "Click", "param": {"target": [547, 202]}},
+        "post_delay": 3000,
+        "next": ["部落捐一个"]
+    },
+    // 捐一个：OCR 认「捐赠」两个字 -> 点它，**点一下就直接捐出**，没有二次确认弹窗。
+    // ⚠️ max_hit 是**上限**：界面上「单次捐赠张数」折算出来的次数由 option 注入。
+    //    纯 JSON 判不了「按钮亮着还是灭的」（那看的是底色饱和度），
+    //    所以暗着的按钮点了也不会捐出去，只是白点一下 —— 用 max_hit 兜住次数。
+    "部落捐一个": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": "捐赠",
+                "roi": [0, 60, 720, 1130],
+                "threshold": 0.3,
+                "color_filter": "白字掩码"
+            }
+        },
+        "action": {"type": "Click", "param": {"target": true}},
+        "post_delay": 2500,
+        "max_hit": 1,
+        "next": ["部落捐一个"],
+        "on_error": ["部落翻页"]
+    },
+    // 当前屏没有可捐的：往下拖 = 聊天记录往上翻，找更早的请求。
+    "部落翻页": {
+        "recognition": {"type": "DirectHit", "param": {}},
+        "action": {
+            "type": "Swipe",
+            "param": {
+                "begin": [360, 300, 1, 1],
+                "end": [[360, 800, 1, 1]],
+                "duration": 800
+            }
+        },
+        "post_delay": 1500,
+        "max_hit": 8,
+        "next": ["部落捐一个"],
+        "on_error": ["收尾回主界面"]
+    },
+
+    // 收尾：回主界面。和 base.json 的「回主界面」是同一套逻辑，
+    // 区别是**这里没有 next** —— 日常任务跑完就该结束，别跳进对战循环。
+    "收尾回主界面": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "template": "nav/battle.png",
+                "roi": [0, 1140, 720, 140],
+                "threshold": 0.6
+            }
+        },
+        "action": {"type": "Click", "param": {"target": true}},
+        "post_delay": 2000
     }
 }

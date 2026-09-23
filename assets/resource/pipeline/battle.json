@@ -1,118 +1,289 @@
 {
-    "结算界面": {
-        "recognition": "And",
-        "all_of": [
-            {
-                "sub_name": "confirm",
-                "recognition": "TemplateMatch",
-                "template": "anchors/result_confirm.png",
-                "threshold": 0.8
-            },
-            {
-                "recognition": "ColorMatch",
-                "roi": [
-                    377,
-                    1121,
-                    190,
-                    56
-                ],
-                "method": 40,
-                "lower": [
-                    95,
-                    120,
-                    150
-                ],
-                "upper": [
-                    125,
-                    255,
-                    255
-                ],
-                "count": 4256
-            }
-        ],
-        "box_index": 0,
-        "action": "Custom",
-        "custom_action": "CR.OnResult",
-        "post_delay": 3000,
-        "next": [
-            "对战循环入口"
-        ]
-    },
-    "宝箱弹层": {
-        "recognition": "TemplateMatch",
-        "template": [
-            "anchors/chest_stars.png",
-            "anchors/chest_stars_b.png"
-        ],
-        "threshold": 0.85,
-        "action": "Custom",
-        "custom_action": "CR.TapOverlay",
-        "post_delay": 1200,
-        "next": [
-            "对战循环入口"
-        ]
-    },
+    // ★ 纯战斗循环（2026-09-23 转纯 JSON，**没有任何自定义识别/动作**）。
+    //
+    // 三个关键设计，都对着官方《3.1-任务流水线协议》和真机标定数据：
+    //
+    // ① 圣水门槛用**位置竖条**，不用整条像素总数。
+    //    标定实测：按总数分圣水是重叠的（8费 7832~13321、5费 0~9186，白字打空洞），
+    //    而按位置取 6px 竖条是**完全二值**的：亮=174px、不亮=0px。
+    //    x = 150 + (693-150) × N/10：
+    //      5费 421 | 6费 475 | 7费 530 | 8费 584 | 9费 638 | 10费 690
+    //    ⇒「圣水够 8 费」= roi [581,1230,6,40] + 洋红 + count >= 50
+    //
+    // ② 手牌不需要「每槽各是哪张」—— 同时只可能有 4 张。
+    //    TemplateMatch 命中的框**就是那张牌的位置**，直接 Click(target=true) 就出牌，
+    //    连槽位都不用算。**优先级 = next 的顺序**（协议：按顺序识别，只执行第一个命中的）。
+    //    8 个节点覆盖 10 张模板（两张精英形态并进同节点的 template 列表）。
+    //
+    // ③ 落点：「塔破就放敌方半场深位」用 ColorMatch + inverse 判断血条消失。
+
+    // ——— 门：确认「确实在对战画面」———
+    // 必须同时满足：圣水条左端亮（1费位置）+ 手牌区至少认出一张牌。
+    // 只看圣水条颜色不够 —— 开宝箱那种整屏紫粉的界面会让条区域一片亮。
     "对战中": {
-        "recognition": "Custom",
-        "custom_recognition": "CR.InBattle",
-        "action": "Custom",
-        "custom_action": "CR.PlayCards",
-        "custom_action_param": {
-            "min_elixir": 8
+        "recognition": {
+            "type": "And",
+            "param": {
+                "all_of": [
+                    {
+                        "sub_name": "圣水条",
+                        "recognition": {
+                            "type": "ColorMatch",
+                            "param": {
+                                "roi": [201, 1230, 6, 40],
+                                "method": 40,
+                                "lower": [138, 70, 170],
+                                "upper": [175, 255, 255],
+                                "count": 50
+                            }
+                        }
+                    },
+                    {
+                        "sub_name": "手牌",
+                        "recognition": {
+                            "type": "TemplateMatch",
+                            "param": {
+                                "template": [
+                                    "cards/t_fb73fd20.png",
+                                    "cards/t_8f7798e5.png",
+                                    "cards/t_45758bb8.png",
+                                    "cards/t_e9d73288.png",
+                                    "cards/t_0c77500e.png",
+                                    "cards/t_d4967fec.png",
+                                    "cards/t_b67790c6.png",
+                                    "cards/t_31c457a6.png",
+                                    "cards/t_0ef50e6e.png",
+                                    "cards/t_821229c2.png"
+                                ],
+                                "roi": [108, 1011, 712, 1267],
+                                "threshold": 0.85
+                            }
+                        }
+                    }
+                ]
+            }
         },
+        "action": {"type": "DoNothing", "param": {}},
+        "timeout": 600,
+        "rate_limit": 400,
+        "next": ["出牌-圣水够"],
+        "on_error": ["对战等待"]
+    },
+    // ——— 圣水门槛 ———
+    // 界面上的「对战策略」就是换个 roi 的 x：稳健推进 584 / 有费就出 421 / 攒满再推 690。
+    // 门槛过了才去按优先级挑牌；没过就直接落到「等圣水」。
+    "出牌-圣水够": {
+        "recognition": {
+            "type": "ColorMatch",
+            "param": {
+                "roi": [581, 1230, 6, 40],
+                "method": 40,
+                "lower": [138, 70, 170],
+                "upper": [175, 255, 255],
+                "count": 50
+            }
+        },
+        "action": {"type": "DoNothing", "param": {}},
         "next": [
-            "对战循环入口"
+            "出-木质船",
+            "出-斗笠持刀",
+            "出-光头大笑",
+            "出-绿飞龙",
+            "出-蓝色亡灵",
+            "出-绿哥布林",
+            "出-火焰怪",
+            "出-白骨",
+            "对战等待"
         ]
     },
+    // ——— 八张牌，顺序就是优先级 ———
+    // 命中即点它（`target: true` = 点识别框中心 = 那张牌本身），然后去落点。
+    "出-木质船": {
+        "recognition": {"type": "TemplateMatch", "param": {"template": "cards/t_45758bb8.png", "roi": [108, 1011, 712, 1267], "threshold": 0.85}},
+        "action": {"type": "Click", "param": {"target": true}},
+        "pre_delay": 100,
+        "post_delay": 350,
+        "next": ["落点"],
+        "on_error": ["对战等待"]
+    },
+    "出-斗笠持刀": {
+        "recognition": {"type": "TemplateMatch", "param": {"template": "cards/t_e9d73288.png", "roi": [108, 1011, 712, 1267], "threshold": 0.85}},
+        "action": {"type": "Click", "param": {"target": true}},
+        "pre_delay": 100,
+        "post_delay": 350,
+        "next": ["落点"],
+        "on_error": ["对战等待"]
+    },
+    "出-光头大笑": {
+        "recognition": {"type": "TemplateMatch", "param": {"template": "cards/t_d4967fec.png", "roi": [108, 1011, 712, 1267], "threshold": 0.85}},
+        "action": {"type": "Click", "param": {"target": true}},
+        "pre_delay": 100,
+        "post_delay": 350,
+        "next": ["落点"],
+        "on_error": ["对战等待"]
+    },
+    // 绿飞龙：普通形态 + 精英形态两套素材并进同一个 template 列表 ——
+    // 觉醒机制会让同一张牌在两个形态间交替出现，两套都要能认。
+    "出-绿飞龙": {
+        "recognition": {"type": "TemplateMatch", "param": {"template": ["cards/t_8f7798e5.png", "cards/t_821229c2.png"], "roi": [108, 1011, 712, 1267], "threshold": 0.85}},
+        "action": {"type": "Click", "param": {"target": true}},
+        "pre_delay": 100,
+        "post_delay": 350,
+        "next": ["落点"],
+        "on_error": ["对战等待"]
+    },
+    "出-蓝色亡灵": {
+        "recognition": {"type": "TemplateMatch", "param": {"template": "cards/t_0c77500e.png", "roi": [108, 1011, 712, 1267], "threshold": 0.85}},
+        "action": {"type": "Click", "param": {"target": true}},
+        "pre_delay": 100,
+        "post_delay": 350,
+        "next": ["落点"],
+        "on_error": ["对战等待"]
+    },
+    // 绿哥布林：同样两套形态
+    "出-绿哥布林": {
+        "recognition": {"type": "TemplateMatch", "param": {"template": ["cards/t_fb73fd20.png", "cards/t_0ef50e6e.png"], "roi": [108, 1011, 712, 1267], "threshold": 0.85}},
+        "action": {"type": "Click", "param": {"target": true}},
+        "pre_delay": 100,
+        "post_delay": 350,
+        "next": ["落点"],
+        "on_error": ["对战等待"]
+    },
+    "出-火焰怪": {
+        "recognition": {"type": "TemplateMatch", "param": {"template": "cards/t_b67790c6.png", "roi": [108, 1011, 712, 1267], "threshold": 0.85}},
+        "action": {"type": "Click", "param": {"target": true}},
+        "pre_delay": 100,
+        "post_delay": 350,
+        "next": ["落点"],
+        "on_error": ["对战等待"]
+    },
+    "出-白骨": {
+        "recognition": {"type": "TemplateMatch", "param": {"template": "cards/t_31c457a6.png", "roi": [108, 1011, 712, 1267], "threshold": 0.85}},
+        "action": {"type": "Click", "param": {"target": true}},
+        "pre_delay": 100,
+        "post_delay": 350,
+        "next": ["落点"],
+        "on_error": ["对战等待"]
+    },
+    // ——— 落点 ———
+    // 左路公主塔血条还在 -> 放桥头（己方半场推过去）；血条没了（塔已破）-> 放敌方半场深位。
+    // 血条也是「位置竖条」判据：实测满血 439~728px、已破 0px。
+    // ⚠️ inverse 的节点里 Click 的 `target` 必须**显式给坐标** —— 协议写明
+    //    「由此识别出的节点，Click 等动作的点击自身将失效（因为实际并没有识别到东西）」。
+    "落点": {
+        "recognition": {"type": "DirectHit", "param": {}},
+        "action": {"type": "DoNothing", "param": {}},
+        "next": ["落点-破塔深位", "落点-桥头"]
+    },
+    "落点-破塔深位": {
+        "recognition": {
+            "type": "ColorMatch",
+            "param": {
+                "roi": [138, 166, 8, 30],
+                "method": 40,
+                "lower": [155, 120, 150],
+                "upper": [179, 255, 255],
+                "count": 50
+            }
+        },
+        "inverse": true,
+        "action": {"type": "Click", "param": {"target": [177, 291]}},
+        "post_delay": 1200,
+        "next": ["对战循环入口"],
+        "on_error": ["落点-桥头"]
+    },
+    "落点-桥头": {
+        "recognition": {"type": "DirectHit", "param": {}},
+        "action": {"type": "Click", "param": {"target": [172, 590]}},
+        "post_delay": 1200,
+        "next": ["对战循环入口"]
+    },
+    // 没有可出的牌（圣水不够 / 都在冷却）时的落脚点：等一下回循环重判。
+    "对战等待": {
+        "recognition": {"type": "DirectHit", "param": {}},
+        "action": {"type": "DoNothing", "param": {}},
+        "post_delay": 200,
+        "next": ["对战循环入口"]
+    },
+    // ——— 结算 / 点确定 ———
+    // 双重确认（模板 + 色块）比单看模板稳。记账那部分已经不需要了 ——
+    // 局数改用「主界面」节点的 max_hit 数（见 main.json）。
+    "结算界面": {
+        "recognition": {
+            "type": "And",
+            "param": {
+                "all_of": [
+                    {
+                        "sub_name": "confirm",
+                        "recognition": {
+                            "type": "TemplateMatch",
+                            "param": {"template": "anchors/result_confirm.png", "threshold": 0.8}
+                        }
+                    },
+                    {
+                        "recognition": {
+                            "type": "ColorMatch",
+                            "param": {
+                                "roi": [377, 1121, 190, 56],
+                                "method": 40,
+                                "lower": [95, 120, 150],
+                                "upper": [125, 255, 255],
+                                "count": 4256
+                            }
+                        }
+                    }
+                ],
+                "box_index": 0
+            }
+        },
+        "action": {"type": "DoNothing", "param": {}},
+        "post_delay": 300,
+        "next": ["点结算确定"],
+        "on_error": ["对战循环入口"]
+    },
+    "点结算确定": {
+        "recognition": {"type": "DirectHit", "param": {}},
+        "action": {"type": "Click", "param": {"target": [472, 1149]}},
+        "post_delay": 3000,
+        "next": ["对战循环入口"],
+        "on_error": ["对战循环入口"]
+    },
+    // ★ 奖励宝箱：打完一局点完「确定」之后必现的多阶段动画（实测约 8 下回到主界面）。
+    // 自环 + 排在循环最前；max_hit 当跑飞的保险丝。
+    "奖励宝箱": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "template": ["anchors/chest_stars.png", "anchors/chest_stars_b.png"],
+                "threshold": 0.85
+            }
+        },
+        "action": {"type": "Click", "param": {"target": [360, 600]}},
+        "post_delay": 1500,
+        "timeout": 1000,
+        "max_hit": 300,
+        "next": ["奖励宝箱"],
+        "on_error": ["对战循环入口"]
+    },
+    // ——— 卡组页挡路 ———
     "卡组页": {
-        "recognition": "TemplateMatch",
-        "template": "anchors/deck_slots.png",
-        "threshold": 0.85,
-        "action": "Custom",
-        "custom_action": "CR.GoMain",
-        "post_delay": 2500,
-        "next": [
-            "对战循环入口"
-        ]
-    },
-    "主界面": {
-        "recognition": "ColorMatch",
-        "roi": [
-            244,
-            934,
-            250,
-            64
-        ],
-        "method": 40,
-        "lower": [
-            5,
-            90,
-            140
-        ],
-        "upper": [
-            35,
-            255,
-            255
-        ],
-        "count": 8000,
-        "action": "Click",
-        "target": [
-            369,
-            966
-        ],
-        "post_delay": 2500,
-        "next": [
-            "对战循环入口"
-        ]
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {"template": "anchors/deck_slots.png", "threshold": 0.85}
+        },
+        "action": {"type": "DoNothing", "param": {}},
+        "post_delay": 500,
+        "next": ["回主界面"],
+        "on_error": ["回主界面"]
     },
     "匹配中": {
-        "recognition": "TemplateMatch",
-        "template": "anchors/cancel.png",
-        "threshold": 0.8,
-        "action": "DoNothing",
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {"template": "anchors/cancel.png", "threshold": 0.8}
+        },
+        "action": {"type": "DoNothing", "param": {}},
         "rate_limit": 1000,
-        "next": [
-            "对战循环入口"
-        ]
+        "next": ["对战循环入口"],
+        "on_error": ["对战循环入口"]
     }
 }

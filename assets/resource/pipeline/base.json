@@ -1,0 +1,35 @@
+{
+    // 通用节点。对齐 MaaYuan 的 base.json 做法：把一个以上任务都要用的「小节点」
+    // 集中在这里，别的 pipeline 文件直接 next/on_error 引过来。
+    "stop": {
+        "recognition": {
+            "type": "DirectHit",
+            "param": {}
+        },
+        "action": {
+            "type": "StopTask",
+            "param": {}
+        }
+    },
+    // 环境没准备好（启动阶段没等到主界面）时的落脚点。
+    // ⚠️ 定义在 main.json（紧挨着用它的那几个节点），这里**不要**再写一份 ——
+    //    两个文件里出现同名节点是重复定义，行为不确定。
+    // 回主界面：点底部导航「对战」。
+    // 判定（找图标 / 已经在这一页 / 点「确定」清弹层）在 CR.FindHomeTap 里，
+    // **点击是原生 Click**。用在**对战循环**里，所以处理完回循环入口。
+    // （日常任务要的是「处理完就结束」，见 daily.json 的「收尾回主界面」。）
+    "回主界面": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "template": "nav/battle.png",
+                "roi": [0, 1140, 720, 140],
+                "threshold": 0.6
+            }
+        },
+        "action": {"type": "Click", "param": {"target": true}},
+        "post_delay": 2000,
+        "next": ["对战循环入口"],
+        "on_error": ["对战循环入口"]
+    }
+}

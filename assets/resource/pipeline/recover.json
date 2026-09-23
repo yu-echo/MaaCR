@@ -1,11 +1,122 @@
 {
+    // ★ 「认不出来的界面」—— 纯 JSON 版（2026-09-23）。
+    //
+    // 核心：**unknown = 一个已知界面都不匹配**。
+    // 协议里没有 Not 类型，「非」只能用通用字段 `inverse`，
+    // 所以这里用 `Or` 列出所有已知界面的锚点，再 `inverse: true`。
+    //
+    // ⚠️ 这一条不只是「更干净」—— 它是**收工路径能不能生效的前提**：
+    //    之前这个节点是 DirectHit（永远命中），于是 `对战循环入口` 永远不会识别超时，
+    //    「打够了」那个 on_error 一辈子走不到。改成真判断之后超时才可达。
+    //
+    // 兜底顺序（代价从低到高）：点底部导航回主界面 -> 当弹层点一下 -> 重启游戏。
+    // 三者都试完（max_hit 用尽）就自然结束，不再原地打转。
     "未知界面处理": {
-        "recognition": "DirectHit",
-        "action": "Custom",
-        "custom_action": "CR.UnknownRecover",
+        "recognition": {
+            "type": "Or",
+            "param": {
+                "any_of": [
+                    {
+                        "recognition": {
+                            "type": "ColorMatch",
+                            "param": {
+                                "roi": [244, 934, 250, 64],
+                                "method": 40,
+                                "lower": [5, 90, 140],
+                                "upper": [35, 255, 255],
+                                "count": 8000
+                            }
+                        }
+                    },
+                    {
+                        "recognition": {
+                            "type": "TemplateMatch",
+                            "param": {"template": "anchors/result_confirm.png", "threshold": 0.8}
+                        }
+                    },
+                    {
+                        "recognition": {
+                            "type": "TemplateMatch",
+                            "param": {"template": ["anchors/chest_stars.png", "anchors/chest_stars_b.png"], "threshold": 0.85}
+                        }
+                    },
+                    {
+                        "recognition": {
+                            "type": "TemplateMatch",
+                            "param": {"template": "anchors/deck_slots.png", "threshold": 0.85}
+                        }
+                    },
+                    {
+                        "recognition": {
+                            "type": "TemplateMatch",
+                            "param": {"template": "anchors/cancel.png", "threshold": 0.8}
+                        }
+                    },
+                    {
+                        "recognition": {
+                            "type": "TemplateMatch",
+                            "param": {
+                                "template": [
+                                    "cards/t_fb73fd20.png", "cards/t_8f7798e5.png",
+                                    "cards/t_45758bb8.png", "cards/t_e9d73288.png",
+                                    "cards/t_0c77500e.png", "cards/t_d4967fec.png",
+                                    "cards/t_b67790c6.png", "cards/t_31c457a6.png",
+                                    "cards/t_0ef50e6e.png", "cards/t_821229c2.png"
+                                ],
+                                "roi": [108, 1011, 712, 1267],
+                                "threshold": 0.85
+                            }
+                        }
+                    }
+                ]
+            }
+        },
+        "inverse": true,
+        "action": {"type": "DoNothing", "param": {}},
+        "next": ["未知-点导航", "未知-点弹层", "未知-重启"],
+        "on_error": ["对战循环入口"]
+    },
+    // ① 底部导航还在 -> 点「对战」回主界面（卡在子页面的正解，最便宜）
+    "未知-点导航": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {"template": "nav/battle.png", "roi": [0, 1140, 720, 140], "threshold": 0.6}
+        },
+        "action": {"type": "Click", "param": {"target": true}},
+        "post_delay": 2000,
+        "max_hit": 40,
+        "next": ["对战循环入口"],
+        "on_error": ["未知-点弹层"]
+    },
+    // ② 当全屏弹层处理：点屏幕中间推进。严格限次，免得真卡住时乱点。
+    "未知-点弹层": {
+        "recognition": {"type": "DirectHit", "param": {}},
+        "action": {"type": "Click", "param": {"target": [360, 540]}},
         "post_delay": 800,
-        "next": [
-            "对战循环入口"
-        ]
+        "max_hit": 60,
+        "next": ["对战循环入口"]
+    },
+    // ③ 认不出来又推不动 -> 重启游戏（最贵但最确定）。
+    // ⚠️ 用原生 StopApp/StartApp，不再需要自定义动作。
+    //    纯 JSON 拿不到「画面是否定格」这个判据了（那要算帧间差），
+    //    所以这里改成**限次**：重启 2 次还不行就自然结束，不无限重启。
+    "未知-重启": {
+        "recognition": {"type": "DirectHit", "param": {}},
+        "action": {
+            "type": "StopApp",
+            "param": {"package": "com.tencent.tmgp.supercell.clashroyale"}
+        },
+        "post_delay": 3000,
+        "max_hit": 2,
+        "next": ["未知-拉起"]
+    },
+    "未知-拉起": {
+        "recognition": {"type": "DirectHit", "param": {}},
+        "action": {
+            "type": "StartApp",
+            "param": {"package": "com.tencent.tmgp.supercell.clashroyale"}
+        },
+        "post_delay": 3000,
+        "next": ["对战循环入口"]
     }
 }

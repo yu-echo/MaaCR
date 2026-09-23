@@ -1,13 +1,16 @@
 # OCR 模型放这里（det.onnx / rec.onnx / keys.txt）。
 #
-# 当前项目**一个 OCR 节点都没用** —— 圣水、塔血、皇冠数都是「宽度就是数值」
-# 加色块计数读出来的，不需要文字识别。所以这个目录现在是空的，这没问题：
-# 只有 pipeline 里出现 recognition: "OCR" 的节点才会去加载模型。
+# 2026-09-23：**用上了**，所以改成提交进来。
+# 之前这里是空的（`*` 全忽略），因为项目一个 OCR 节点都没用 —— 圣水、塔血、皇冠数
+# 都是「宽度就是数值」加色块计数读出来的。现在文字/弹窗识别要走框架的 `OCR`，
+# 而 `recognition: "OCR"` 的节点会去这个目录加载模型，缺了识别直接失败。
 #
-# 以后要做「读杯数」「读卡牌大师进度」这类文字，从这里拿预转换好的模型：
+# 用的是 PP-OCRv5 mobile（det + rec + keys）。官方预转换版：
 #   https://github.com/MaaXYZ/MaaCommonAssets/tree/main/OCR
-# 按 model/ocr/ 放 det.onnx + rec.onnx + keys.txt 即可。
-#
-# 模型文件体积不小，默认不提交。
+# 体积约 21 MB，**必须提交** —— 发布包和 CI 都靠它，只留在本地的话下一个包就没了。
 *
 !.gitignore
+!ocr/
+!ocr/det.onnx
+!ocr/rec.onnx
+!ocr/keys.txt

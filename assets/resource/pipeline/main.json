@@ -1,31 +1,219 @@
 {
-    // 单独一个「只做启动准备、不往下打」的节点。
-    // 为什么要单独拆：界面的任务列表里，「启动游戏」和「自动对战」原来是**共用**
-    // `启动检查` 当入口的 —— 实测那种情况下「自动对战」在列表里不显示（通用 UI 会把
-    // 入口重复的任务去掉）。参考实现 MaaYuan 的 41 个任务入口各不相同，所以照它来：
-    //   启动游戏 -> 本节点（只准备就绪）
-    //   自动对战 -> 启动检查（准备就绪 + 进入对战循环）
+    // ★ 纯 JSON 重构（2026-09-23）：入口 / 环境准备 / 对战主循环。
+    //   字段名对着官方《3.1-任务流水线协议》核过，不是猜的：
+    //     StartApp/StopApp 的包名参数是 `package`；Shell 是 `cmd`；
+    //     Click 的 `target` 默认 true（点识别框中心）；`max_hit` 超限后会被 next 跳过。
+    //   圣水/塔血的阈值来自真机标定（见 纯JSON化设计-含标定.md 第一节）。
+    //
+    // ⚠️ 两个任务的入口必须各不相同（共用入口的那个在界面上不显示），
+    //    但它们**共用同一条环境准备链**；区别靠 interface.json 的**任务级
+    //    pipeline_override** 注入：
+    //      「启动游戏」—— 准备完就结束（主界面锚点 next 为空）
+    //      「自动对战」—— 准备完继续进对战循环（override 成 next: [对战循环入口]）
     "启动游戏": {
-        "recognition": "DirectHit",
-        "action": "Custom",
-        "custom_action": "CR.Boot"
-    },
-    "启动检查": {
-        "recognition": "DirectHit",
-        "action": "Custom",
-        "custom_action": "CR.Boot",
+        "recognition": {
+            "type": "DirectHit",
+            "param": {}
+        },
+        "action": {
+            "type": "DoNothing",
+            "param": {}
+        },
         "next": [
-            "对战循环入口"
+            "环境准备"
         ]
     },
-    "对战循环入口": {
-        "recognition": "DirectHit",
-        "action": "DoNothing",
+    "启动检查": {
+        "recognition": {
+            "type": "DirectHit",
+            "param": {}
+        },
+        "action": {
+            "type": "DoNothing",
+            "param": {}
+        },
         "next": [
-            "对局数已达标",
+            "环境准备"
+        ]
+    },
+    // 环境准备：点屏常亮 -> 拉起游戏 -> 清障 -> 等主界面。
+    // 「多久没到主界面就报失败」靠 `再等等` 的 max_hit 当**重试预算**：
+    // 60 次 × post_delay 2000 = 最多等 120 秒；用完就被 next 跳过，
+    // 那时既没有清障项可点、也没到主界面 -> 清障链 识别超时 -> on_error 报失败。
+    "环境准备": {
+        "recognition": {
+            "type": "DirectHit",
+            "param": {}
+        },
+        "action": {
+            "type": "Shell",
+            "param": {
+                "cmd": "input keyevent KEYCODE_WAKEUP; svc power stayon true"
+            }
+        },
+        "post_delay": 800,
+        "next": [
+            "拉起游戏"
+        ],
+        "on_error": [
+            "环境未就绪"
+        ]
+    },
+    "拉起游戏": {
+        "recognition": {
+            "type": "DirectHit",
+            "param": {}
+        },
+        "action": {
+            "type": "StartApp",
+            "param": {
+                "package": "com.tencent.tmgp.supercell.clashroyale"
+            }
+        },
+        "post_delay": 3000,
+        "next": [
+            "清障链"
+        ],
+        "on_error": [
+            "环境未就绪"
+        ]
+    },
+    // 清障链：等启动过程中的加载/弹层过去，直到出现主界面锚点。
+    // ⚠️ 顺序是踩出来的（22:06 实测）：**主界面锚点必须排在「再等等」前面**。
+    //    「再等等」是 DirectHit、永远命中，排在前面就会把锚点饿死 ——
+    //    框架日志里表现为 清障链 → 再等等 → 清障链 → 再等等 无限互相调用，
+    //    锚点一次都没被评估过。
+    // ⚠️ timeout 给短（5 秒）：重试预算用完后（「再等等」被 max_hit 跳过）
+    //    这里识别不到东西，尽快落到 on_error 报失败。
+    // TODO（需要真实启动帧才能补）：国服启动时的「公告 / 活动弹窗」关闭节点。
+    //   如果实测发现弹窗挡住了主界面按钮，就照这个位置补两个关闭节点（模板从启动帧裁）。
+    "清障链": {
+        "recognition": {
+            "type": "DirectHit",
+            "param": {}
+        },
+        "action": {
+            "type": "DoNothing",
+            "param": {}
+        },
+        "timeout": 5000,
+        "on_error": [
+            "环境未就绪"
+        ],
+        "next": [
+            "点掉挡路弹窗",
+            "主界面锚点",
+            "再等等"
+        ]
+    },
+    // 关「挡路的弹窗」：2026-09-23 实测到的真实场景 —— 奖杯之路 / 解锁卡牌那种
+    // 全屏奖励弹窗，上面没有「对战」按钮，主界面锚点永远匹配不到，
+    // 整个启动阶段就会一直等到超时。实测截图里底部是蓝色「确定」。
+    // 用 OCR 认「确定」两个字（配「白字掩码」做颜色二值化）——
+    // 比写死坐标稳，而且各种「确定」弹窗都能一起收掉。
+    "点掉挡路弹窗": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": "确定",
+                "roi": [150, 1100, 420, 180],
+                "threshold": 0.3,
+                "color_filter": "白字掩码"
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": true
+            }
+        },
+        "post_delay": 2000,
+        "max_hit": 20,
+        "next": [
+            "清障链"
+        ]
+    },
+    // 重试预算：60 次 × post_delay 2000 = 最多等 120 秒。
+    // 用完 max_hit 之后，其他节点的 next 里它会被跳过 -> 清障链 只剩锚点可试
+    // -> 超时 -> on_error -> 环境未就绪。这就是「多久没到主界面就报失败」。
+    "再等等": {
+        "recognition": {
+            "type": "DirectHit",
+            "param": {}
+        },
+        "action": {
+            "type": "DoNothing",
+            "param": {}
+        },
+        "post_delay": 2000,
+        "max_hit": 60,
+        "next": [
+            "清障链"
+        ]
+    },
+    // 主界面锚点 = 「对战」按钮那片橙色（色域沿用旧配置里实测过的 H_ORANGE）。
+    // 默认 next 为空 = 准备完就结束（给「启动游戏」用）；
+    // 「自动对战」靠任务级 override 把它接进对战循环。
+    "主界面锚点": {
+        "recognition": {
+            "type": "ColorMatch",
+            "param": {
+                "roi": [
+                    244,
+                    934,
+                    250,
+                    64
+                ],
+                "method": 40,
+                "lower": [
+                    5,
+                    90,
+                    140
+                ],
+                "upper": [
+                    35,
+                    255,
+                    255
+                ],
+                "count": 8000
+            }
+        },
+        "action": {
+            "type": "DoNothing",
+            "param": {}
+        }
+    },
+    "环境未就绪": {
+        "recognition": {
+            "type": "DirectHit",
+            "param": {}
+        },
+        "action": {
+            "type": "StopTask",
+            "param": {}
+        },
+        "focus": "等了很久也没进到游戏主界面，已停下 —— 看设备 / 模拟器状态"
+    },
+
+    // ——— 对战主循环 ———
+    // 顺序 = 判定优先级。宝箱放最前：它在结算之后必现，且不影响计数。
+    "对战循环入口": {
+        "recognition": {
+            "type": "DirectHit",
+            "param": {}
+        },
+        "action": {
+            "type": "DoNothing",
+            "param": {}
+        },
+        "timeout": 20000,
+        "on_error": [
+            "打够了"
+        ],
+        "next": [
+            "奖励宝箱",
             "结算界面",
             "登录页",
-            "宝箱弹层",
             "对战中",
             "卡组页",
             "主界面",
@@ -33,27 +221,77 @@
             "未知界面处理"
         ]
     },
-    "对局数已达标": {
-        "recognition": "Custom",
-        "custom_recognition": "CR.MatchesReached",
-        "custom_recognition_param": {
-            "matches": 1
+    // ★「打几局」：借「主界面」当计数器 —— 每开一局要点一次「对战」。
+    // max_hit 由界面上的「最多打几局」用 pipeline_override 注入。
+    // 打够之后 主界面 会被 next 跳过 -> 循环里没人命中 -> 超时 -> on_error -> 打够了。
+    // ⚠️ 近似：中途若回到主界面会多计一次。协议里没有跨节点累加器，
+    //    纯 JSON 想计数只能靠 max_hit 这种「用一次少一次」的机制。
+    //    ⚠️ 这个节点定义在 main.json，别的文件**不要再定义同名节点**（重复定义行为不确定）。
+    "主界面": {
+        "recognition": {
+            "type": "ColorMatch",
+            "param": {
+                "roi": [
+                    244,
+                    934,
+                    250,
+                    64
+                ],
+                "method": 40,
+                "lower": [
+                    5,
+                    90,
+                    140
+                ],
+                "upper": [
+                    35,
+                    255,
+                    255
+                ],
+                "count": 8000
+            }
         },
-        "action": "StopTask"
-    },
-    "登录页": {
-        "recognition": "TemplateMatch",
-        "template": "anchors/cadpa.png",
-        "threshold": 0.8,
-        "action": "StopTask",
-        "focus": {
-            "Node.Recognition.Succeeded": {
-                "content": "检测到登录页 —— 停下来等你手动登录（微信 / QQ 授权不碰）",
-                "display": [
-                    "log",
-                    "toast"
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    369,
+                    966
                 ]
             }
-        }
+        },
+        "max_hit": 1,
+        "post_delay": 2500,
+        "next": [
+            "对战循环入口"
+        ],
+        "on_error": [
+            "对战循环入口"
+        ]
+    },
+    "打够了": {
+        "recognition": {
+            "type": "DirectHit",
+            "param": {}
+        },
+        "action": {
+            "type": "StopTask",
+            "param": {}
+        },
+        "focus": "打满设定的局数，收工"
+    },
+    "登录页": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "template": "anchors/cadpa.png",
+                "threshold": 0.8
+            }
+        },
+        "action": {
+            "type": "StopTask",
+            "param": {}
+        },
+        "focus": "检测到登录页 —— 停下来等你手动登录（微信 / QQ 授权不碰）"
     }
 }

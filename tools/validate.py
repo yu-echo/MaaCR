@@ -352,6 +352,44 @@ def check_interface(nodes):
              "      建个空目录（放个 .gitkeep 说明原因）即可。"
              % RESOURCE_BASE.relative_to(ROOT))
 
+    # ---- 图标：MFAAvalonia 的 IconHelper 只认顶层 icon 字段（按数据目录解析），
+    #      缺了会静默退回它自己内嵌的 logo.ico —— 表现是「换了 logo 但界面里没变」。
+    icon = data.get("icon")
+    if icon:
+        icon_path = ASSETS / str(icon)
+        if not icon_path.is_file():
+            fail("interface.json 的 icon 指向 %s，但文件不存在。\n"
+                 "      它按「数据目录」解析（开发时是 assets/、发布时是包根）。\n"
+                 "      文件缺失时 MFAAvalonia 不会报错，而是**静默用回它自带的内嵌图标**，\n"
+                 "      于是看起来像「logo 换了但界面没变」。" % icon_path.relative_to(ROOT))
+    else:
+        note("interface.json 没有 icon 字段 —— 界面会显示 MFAAvalonia 自带的图标，"
+             "不是本项目的 logo。想换成自己的就加 \"icon\": \"icon.png\" 并放好文件。")
+
+    # ---- 选项引用：task / setting / preset 里写的选项名必须真的定义过。
+    #      删选项时最容易漏掉某处引用 —— 那种错误 JSON 语法照样合法，
+    #      但界面上会冒出一个空控件或者直接报错，很难定位。
+    defined = set((data.get("option") or {}).keys())
+    used: list[tuple[str, str]] = []
+    for t in _as_list(data.get("task")):
+        if isinstance(t, dict):
+            for o in t.get("option") or []:
+                used.append(("task「%s」" % t.get("name"), o))
+    for s in _as_list(data.get("setting")):
+        if isinstance(s, dict):
+            for o in s.get("option") or []:
+                used.append(("setting「%s」" % s.get("label", s.get("name")), o))
+    for p in _as_list(data.get("preset")):
+        if isinstance(p, dict):
+            for t in p.get("task") or []:
+                for o in (t.get("option") or {}).keys():
+                    used.append(("preset「%s」的 task「%s」" % (p.get("name"), t.get("name")), o))
+    for where, name in used:
+        if name not in defined:
+            fail("%s 引用了未定义的选项 %r。\n"
+                 "      已定义的选项：%s"
+                 % (where, name, "、".join(sorted(defined)) or "（一个都没有）"))
+
 
 def _as_list(value):
     if value is None:
@@ -417,6 +455,58 @@ def _check_rel_path(where, raw, base):
              % (where, raw, base.relative_to(ROOT), target))
 
 
+def check_default_pipeline() -> int:
+    """default_pipeline.json 里每个识别算法块都必须带 `recognition` 字段。
+
+    ★ 这一条是血的教训（2026-09-23）：我们原来写的是
+
+        "TemplateMatch": { "method": 5, "threshold": 0.8 }
+
+    少了 `recognition` 那一行，框架解析时拿不到识别类型，直接报
+    「Unknown recognition [out_type=0]」→ **整个资源包加载失败**，
+    界面上只显示一句「资源加载失败！」，看不出是哪个文件的问题。
+    项目此前从没在真机上跑过，所以这个错误一直躺在那儿 —— 直到真跑才发现。
+
+    官方 sample 的写法是键名与 recognition 同名：
+        "TemplateMatch": { "recognition": "TemplateMatch", "threshold": 0.7, ... }
+
+    ⚠️ 另外注意**键名大小写是敏感的**：写成小写蛇形 `template_match` 不会报错，
+    但也不会生效 —— 框架会静默忽略（实测默认参数仍是内置的 0.7）。
+    所以这里也要求键名与 recognition 完全一致。
+    """
+    path = RESOURCE / "default_pipeline.json"
+    if not path.is_file():
+        fail("缺少 %s —— 框架加载资源包时必须有它。" % path.relative_to(ROOT))
+        return 0
+    try:
+        data = load_jsonc(path)
+    except Exception as e:
+        fail("default_pipeline.json 不是合法 JSON：%s" % e)
+        return 0
+
+    n = 0
+    for key, body in data.items():
+        if key == "Default":
+            continue
+        n += 1
+        if not isinstance(body, dict):
+            fail("default_pipeline.json 的「%s」块应该是对象，当前是 %s"
+                 % (key, type(body).__name__))
+            continue
+        got = body.get("recognition")
+        if not got:
+            fail("default_pipeline.json 的「%s」块缺少 `recognition` 字段。\n"
+                 "      框架靠它判断这个块给哪种识别算法提供默认值；缺了会直接报\n"
+                 "      「Unknown recognition」并让**整个资源包加载失败**。\n"
+                 "      正确写法：\"%s\": { \"recognition\": \"%s\", ... }"
+                 % (key, key, key))
+        elif got != key:
+            fail("default_pipeline.json 的「%s」块里 recognition=%r，与键名不一致。\n"
+                 "      两者必须完全相同（大小写也敏感）—— 写成小写蛇形不会报错，\n"
+                 "      但会被框架静默忽略、默认值根本不生效。" % (key, got))
+    return n
+
+
 def main() -> int:
     print("MaaCR 项目自检")
     print("=" * 60)
@@ -435,6 +525,9 @@ def main() -> int:
 
     check_interface(nodes)
     print("检查 interface.json（含 pretask 路径约定）")
+
+    n_dp = check_default_pipeline()
+    print("检查 default_pipeline.json：%d 个识别算法块" % n_dp)
 
     print("=" * 60)
     for n in notes:

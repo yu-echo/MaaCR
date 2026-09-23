@@ -177,6 +177,15 @@ def install_chores() -> None:
         shutil.copy2(src, INSTALL / name)
         print("  · %s" % name)
 
+    # 界面图标：interface.json 的 icon 字段按「数据目录」解析，发布时数据目录就是包根，
+    # 所以它必须落在包根下（开发时数据目录是 assets/，文件就在 assets/icon.png）。
+    # 漏了不会报错，MFAAvalonia 会静默用回自己内嵌的图标 —— 表现为「换了 logo 界面里没变」。
+    icon_src = ROOT / "assets" / "icon.png"
+    if not icon_src.is_file():
+        die("缺少 assets/icon.png —— interface.json 的 icon 字段要用它。")
+    shutil.copy2(icon_src, INSTALL / "icon.png")
+    print("  · assets/icon.png  ->  install/icon.png（界面图标）")
+
     # 装 .NET 运行时的小脚本：MFAAvalonia 不是自包含发布，少了 .NET 10 桌面运行时会起不来
     bat = ROOT / "tools" / "install-deps-win.bat"
     if not bat.is_file():
@@ -191,7 +200,8 @@ def install_chores() -> None:
 # ==================== 5. 出包后自证 ====================
 
 # 出包这一层最容易「看起来成功了，装出来却跑不起来」，所以逐条点一遍。
-# 尤其 resource/base 那一条：它里面只有一个 .gitkeep，一旦打包/上传环节把隐藏文件
+# 有些是「跑起来的必要条件」，有些是「缺了会静默降级」——两种都列上：
+# 尤其 resource/base 那一条，它里面只有一个 .gitkeep，一旦打包/上传环节把隐藏文件
 # 丢掉，空目录也不会被存下来，pretask 的工作目录就没了。
 MUST_EXIST = (
     "MFAAvalonia.exe",
@@ -202,6 +212,8 @@ MUST_EXIST = (
     "tools/preflight.py",
     "python/python.exe",
     "runtimes/win-x64/native",
+    # 缺了不会报错，界面会静默用回 MFAAvalonia 自带的图标
+    "icon.png",
 )
 
 

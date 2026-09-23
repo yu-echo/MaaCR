@@ -5,6 +5,7 @@
         "timeout": 20000
     },
     "TemplateMatch": {
+        "recognition": "TemplateMatch",
         "method": 5,
         "threshold": 0.8
     }

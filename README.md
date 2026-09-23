@@ -286,7 +286,7 @@ MaaCR/
 │   ├── install-deps-win.bat        #   装 .NET 10 桌面运行时（发布包里才用得上）
 │   └── ci/setup_embed_python.py    #   给发布包装一份自带 Python
 ├── logo.png                        # 当前用的图标（README 头部就是它）
-├── logo/                           # 换下来但保留的备选图标（见 logo/README.md）
+├── logo/                           # 8 次 logo 迭代的留档（见 logo/README.md）
 ├── deps/tools/                     # 官方 JSON Schema（编辑器补全 / 校验用）
 └── docs/zh_cn/                     # 文档：平铺 + 编号（索引见 docs/zh_cn/README.md）
 ```

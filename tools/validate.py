@@ -390,6 +390,27 @@ def check_interface(nodes):
                  "      已定义的选项：%s"
                  % (where, name, "、".join(sorted(defined)) or "（一个都没有）"))
 
+    # ---- 任务入口必须互不相同。两个任务共用一个 entry 时，**其中一个在界面里不会显示** ——
+    #      实测踩过：「启动游戏」和「自动对战」都指 `启动检查`，结果列表里只剩前者，
+    #      看着像「自动对战不见了」。参考实现 MaaYuan 的 41 个任务，入口各不相同。
+    #      这种错代码里完全看不出来，只有打开界面才发现，所以必须静态挡住。
+    seen_entry = {}
+    for t in _as_list(data.get("task")):
+        if not isinstance(t, dict):
+            continue
+        entry = t.get("entry")
+        if not entry:
+            fail("task「%s」没有 entry —— 通用 UI 不知道该从哪个节点跑起。" % t.get("name"))
+            continue
+        if entry in seen_entry:
+            fail("task「%s」和 task「%s」共用同一个入口 %r。\n"
+                 "      入口重复的任务在界面上**只会显示一个**（实测踩过），"
+                 "另一个看起来就像「不见了」。\n"
+                 "      给它们各自一个入口节点即可（可以让新入口 next 指向原来那个节点）。"
+                 % (t.get("name"), seen_entry[entry], entry))
+        else:
+            seen_entry[entry] = t.get("name")
+
 
 def _as_list(value):
     if value is None:

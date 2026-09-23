@@ -41,7 +41,21 @@ for _stream in (sys.stdout, sys.stderr):
         pass
 
 ROOT = Path(__file__).resolve().parent.parent
-ASSETS = ROOT / "assets"
+
+# 两种布局都要认 —— 这个脚本在**源码仓库**和**发布包**里都会被跑到：
+#
+#   仓库：  <repo>/assets/interface.json  +  <repo>/assets/resource/
+#   发布包：<pkg>/interface.json         +  <pkg>/resource/
+#          （MFAAvalonia 只认「自己旁边的 interface.json」，所以发布包里数据目录就是包根）
+#
+# 之前写死成 assets/，结果 README 里让用户在发布包里跑这条命令，
+# 一跑就是「找不到 assets\resource\pipeline」（2026-09-23 实测）。
+# 认错布局的代价不只是报错 —— 它会**一个节点都没检查就宣布通过**，那更危险。
+if (ROOT / "assets" / "interface.json").is_file():
+    ASSETS = ROOT / "assets"        # 源码仓库
+else:
+    ASSETS = ROOT                   # 发布包：数据目录就是包根
+
 RESOURCE = ASSETS / "resource"
 PIPELINE = RESOURCE / "pipeline"
 IMAGE = RESOURCE / "image"
@@ -351,7 +365,7 @@ def _looks_absolute(raw: str) -> bool:
 
 
 def _check_pretask_exec(where, raw):
-    """pretask.exec 不能写「命令名」—— 它不会去 PATH 里找。
+    r"""pretask.exec 不能写「命令名」—— 它不会去 PATH 里找。
 
     MFAAvalonia v2.16.1（MaaProcessor.cs）对 pretask.exec 做的是
         ReplacePlaceholder(exec, ResourceBase)
@@ -361,16 +375,26 @@ def _check_pretask_exec(where, raw):
 
     官方文档写的是「可以是系统 PATH 中的可执行文件，例如 python」，与实现对不上 ——
     所以这里挡一下，免得再踩。
+
+    ⚠️ 但**只挡「裸命令名」**（`python`、`preflight` 这种没有路径分隔符的）。
+    带 `/` 或 `\` 的相对路径是**合法**的：发布包里就该写成
+    `../../python/python.exe`（相对 resource/base），准不准由 _check_rel_path
+    按同一个基准去验——它已经在下面按 RESOURCE_BASE 校验 args 了。
+    一开始我写成了「相对路径一律报错」，结果把发布包自己的 interface.json 判成错的
+    （2026-09-23 实测，错误信息里写的「可行写法 ②」正是它自己否掉的那种）。
     """
     if not isinstance(raw, str) or not raw:
         return
     if _looks_absolute(raw):
         return                                  # 绝对路径：与仓库布局无关，不拦
-    fail("pretask「%s」的 exec 是相对路径：%r\n"
+    if "/" in raw or "\\" in raw:
+        return                                  # 是路径，不是命令名 → 交给 _check_rel_path 验存在性
+    fail("pretask「%s」的 exec 像个命令名：%r\n"
          "      MFAAvalonia 会把它拼成 <数据目录>/resource/base/… 再去找，而且不走 PATH ——\n"
-         "      写命令名（比如 \"python\"）一定失败；写资源目录里的相对路径也得从这个基准数。\n"
-         "      两种可行写法：① 绝对路径（如 C:/Windows/System32/cmd.exe，再让 args 去调真命令）；\n"
-         "      ② 相对 resource/base 的路径。详见 assets/interface.json 里 pretask 的注释。"
+         "      所以写命令名（比如 \"python\"）一定失败。要么写绝对路径\n"
+         "      （如 C:/Windows/System32/cmd.exe，再由 args 去调真命令），\n"
+         "      要么写相对 resource/base 的路径（如 ../../python/python.exe）。\n"
+         "      详见 assets/interface.json 里 pretask 的注释。"
          % (where, raw))
 
 

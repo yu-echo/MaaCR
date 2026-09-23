@@ -57,6 +57,13 @@ MUMU_MANAGER_CANDIDATES = (
     r"C:\Program Files\MuMuPlayer-12.0\shell\MuMuManager.exe",
 )
 
+# 从上面这些候选反推出「MuMu 安装根目录」，用来找它自带的 adb。
+# 候选都长成 <根>\nx_main\MuMuManager.exe 或 <根>\shell\MuMuManager.exe，
+# 所以取两级父目录就是根。这样以后加新的候选路径，adb 的搜索范围会自动跟上。
+MUMU_ROOTS = tuple(sorted({
+    str(Path(p).parent.parent) for p in MUMU_MANAGER_CANDIDATES
+}))
+
 MUMU_VM_INDEX = int(os.environ.get("MUMU_VM_INDEX", "0"))
 MUMU_BOOT_TIMEOUT = int(os.environ.get("MUMU_BOOT_TIMEOUT", "180"))
 
@@ -148,15 +155,44 @@ def _is_local(target: str) -> bool:
 # ==================== adb / 模拟器 ====================
 
 def find_adb():
-    """找 adb：优先 PATH，其次常见安装位置。找不到返回 None。"""
+    """找 adb：PATH → MuMu 自带的 → 别的常见位置。找不到返回 None。
+
+    ⚠️ 2026-09-23 在自己机器上实测发现：**MuMu 12 的 adb 不在 `MuMuPlayer\\shell\\` 下**，
+    而是在这两个位置 ——
+
+        <根>\\nx_main\\adb.exe               （和 MuMuManager.exe 同目录）
+        <根>\\nx_device\\<版本>\\shell\\adb.exe
+
+    原来的候选表只覆盖了 `MiMuPlayer\\shell\\adb.exe` 这种旧布局，于是这台机器上
+    永远「找不到 adb」，`main()` 会在那一步直接 return 0 ——
+    结果「把模拟器拉起来」这半边功能等于完全没有，而且日志只说「交给通用 UI 自己连设备」，
+    很难看出是路径写错了。
+    所以现在改成：**先问已经找到的 MuMuManager 要它旁边的 adb**，再按根目录穷举两种布局。
+    """
     exe = shutil.which("adb")
     if exe:
         return exe
-    for cand in (
-        Path(os.environ.get("LOCALAPPDATA", "")) / "Android/Sdk/platform-tools/adb.exe",
-        Path(r"C:\Program Files\Netease\MuMuPlayer-12.0\shell\adb.exe"),
-        Path(r"E:\Game\MuMuPlayer\shell\adb.exe"),
-    ):
+
+    cands = []
+
+    # ① 最可靠的一招：adb 就在 MuMuManager.exe 旁边
+    mgr = find_mumu_manager()
+    if mgr:
+        cands.append(Path(mgr).parent / "adb.exe")
+
+    # ② 各安装根目录下的两种布局
+    for root in MUMU_ROOTS:
+        base = Path(root)
+        cands.append(base / "nx_main" / "adb.exe")
+        cands.append(base / "shell" / "adb.exe")
+        device_dir = base / "nx_device"
+        if device_dir.is_dir():
+            cands.extend(sorted(device_dir.glob("*/shell/adb.exe")))
+
+    # ③ 其它常见的 adb
+    cands.append(Path(os.environ.get("LOCALAPPDATA", "")) / "Android/Sdk/platform-tools/adb.exe")
+
+    for cand in cands:
         if cand.is_file():
             return str(cand)
     return None

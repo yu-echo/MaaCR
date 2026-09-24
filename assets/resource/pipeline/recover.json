@@ -35,9 +35,22 @@
                         }
                     },
                     {
+                        // 开宝箱整屏橙屏 —— 它也是「一个已知界面」。
+                        // ⚠️ 2026-09-24 换模板：原来用 chest_stars.png / chest_stars_b.png，
+                        //    实测在三张真实橙屏截图上**最高只有 0.571**（阈值 0.85），即**从未命中过**，
+                        //    等于这一项白写 —— 于是整屏橙屏会被判成「未知界面」，
+                        //    兜底链就会去点导航/点弹层/重启游戏，把好好的开宝箱动画搅乱。
+                        //    现在换成从橙屏实测裁出来的两个特征（同 battle.json「奖励宝箱」同源）：
+                        //      chest_orange_stars.png  顶部两颗星   正样本 ≥0.9985 / 负样本 ≤0.5750
+                        //      chest_orange_slots.png  底部4个「?」圈 正样本 ≥0.8163 / 负样本 ≤0.3038
+                        //    数组即 Or 语义，两个特征互相兜底；阈值 0.8。
                         "recognition": {
                             "type": "TemplateMatch",
-                            "param": {"template": ["anchors/chest_stars.png", "anchors/chest_stars_b.png"], "threshold": 0.85}
+                            "param": {
+                                "template": ["anchors/chest_orange_stars.png",
+                                             "anchors/chest_orange_slots.png"],
+                                "threshold": 0.8
+                            }
                         }
                     },
                     {

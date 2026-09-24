@@ -27,7 +27,9 @@ cp logo/01-boar-emblem.png logo.png
 只改仓库根的 `logo.png` 就够了：
 
 - `README.md` 头部引用的是 `./logo.png`；
-- `tools/install.py` 会把它一起放进发布包（不然包里的 README 会挂一张碎图）。
+- 出发布包时要把它一起放进包根（不然包里的 README 会挂一张碎图）。
+  > 以前这是 `tools/install.py` 干的，那个脚本已随「去 Python」删除 ——
+  > 现在出包是手工组装，这一步要**自己记得**。
 
 ## 约定
 
@@ -43,11 +45,11 @@ cp logo/01-boar-emblem.png logo.png
   1. 非 PNG 先用 `ffmpeg -i 源图 中转.png` 转一道。
      ⚠️ 本机没装 ImageMagick；Windows 自带的 `convert.exe` 是 **FAT→NTFS 转换工具**，
      不是图像命令，千万别当 ImageMagick 用。
-  2. 量出「非白内容」的包围盒：用纯标准库的 `png_tool.py --bbox`。
-     **它要求每行/列至少若干个像素**才算「这一行有内容」——
+  2. 量出「非白内容」的包围盒：写个十几行的纯标准库脚本按 PNG 行/列扫一遍即可
+     （**这种临时工具不进仓库**）。**它要按「每行/列至少若干个像素」才算「这一行有内容」**——
      否则边缘一个 JPEG 噪点就会把包围盒撑满整张图（实测踩过）。
   3. 裁/缩：近方图直接 `ffmpeg -vf "crop=边长:边长:x:y,scale=512:512:flags=lanczos"`。
-     纯标准库那套（`png_tool.py`）只支持整数倍降采样，任意尺寸交给 ffmpeg 更省事。
+     纯标准库那套只支持整数倍降采样，任意尺寸交给 ffmpeg 更省事。
   4. 想一次看多张，用 ffmpeg 的 `hstack` / `vstack` 拼成一张总览图 ——
      比一张张翻快得多（本文件上面那张对照表就是这么核对的）。
 - 再加新版本就放 `09-xxx.png` 并补一行表格，**不要覆盖已有文件** ——

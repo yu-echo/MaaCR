@@ -44,16 +44,16 @@
                             "type": "TemplateMatch",
                             "param": {
                                 "template": [
-                                    "cards/t_fb73fd20.png",
-                                    "cards/t_8f7798e5.png",
-                                    "cards/t_45758bb8.png",
-                                    "cards/t_e9d73288.png",
-                                    "cards/t_0c77500e.png",
-                                    "cards/t_d4967fec.png",
-                                    "cards/t_b67790c6.png",
-                                    "cards/t_31c457a6.png",
-                                    "cards/t_0ef50e6e.png",
-                                    "cards/t_821229c2.png"
+                                    "cards/哥布林飞桶.png",
+                                    "cards/飞龙宝宝.png",
+                                    "cards/气球兵.png",
+                                    "cards/武士.png",
+                                    "cards/亡灵.png",
+                                    "cards/狂暴樵夫.png",
+                                    "cards/火精灵.png",
+                                    "cards/骷髅兵.png",
+                                    "cards/哥布林飞桶-进化.png",
+                                    "cards/飞龙宝宝-进化.png"
                                 ],
                                 "roi": [108, 1011, 712, 1267],
                                 "threshold": 0.85
@@ -70,13 +70,18 @@
         "on_error": ["对战等待"]
     },
     // ——— 圣水门槛 ———
-    // 界面上的「对战策略」就是换个 roi 的 x：稳健推进 584 / 有费就出 421 / 攒满再推 690。
-    // 门槛过了才去按优先级挑牌；没过就直接落到「等圣水」。
+    // ⚠️ 2026-09-29 修：这里原来是 [581,...]（**8 费**），于是每轮都要攒到 8 才进挑牌链，
+    //    而链里第一个能出的是手里最贵的那张 —— 结果就是「每次只出一张最大的牌，
+    //    1 费的牌永远轮不到」（用户实测反馈）。
+    //    现在把门槛压到 **1 费**：只要够 1 费就进链，具体出哪张交给每个 `出-x` 节点
+    //    自己的费用判据去筛（它们各自带一条「圣水 ≥ 这张牌的费用」的 ColorMatch）。
+    //    这样才是注释里一直写的那个语义：「先出能出的最大牌，余费再补低费」。
+    //    界面上的「对战策略」仍可把这行 x 改大（5 费 / 10 费）来故意攒费。
     "出牌-圣水够": {
         "recognition": {
             "type": "ColorMatch",
             "param": {
-                "roi": [581, 1230, 6, 40],
+                "roi": [201, 1230, 6, 40],
                 "method": 40,
                 "lower": [138, 70, 170],
                 "upper": [175, 255, 255],
@@ -85,37 +90,111 @@
         },
         "action": {"type": "DoNothing", "param": {}},
         "next": [
-            "出-木质船",
-            "出-斗笠持刀",
-            "出-光头大笑",
-            "出-绿飞龙",
-            "出-蓝色亡灵",
-            "出-绿哥布林",
-            "出-火焰怪",
-            "出-白骨",
+            "出-气球兵",
+            "出-武士",
+            "出-狂暴樵夫",
+            "出-飞龙宝宝",
+            "出-哥布林飞桶",
+            "出-亡灵",
+            "出-火精灵",
+            "出-骷髅兵",
             "对战等待"
         ]
     },
-    // ——— 八张牌，顺序就是优先级 ———
-    // 命中即点它（`target: true` = 点识别框中心 = 那张牌本身），然后去落点。
-    "出-木质船": {
-        "recognition": {"type": "TemplateMatch", "param": {"template": "cards/t_45758bb8.png", "roi": [108, 1011, 712, 1267], "threshold": 0.85}},
+    // 气球兵（5 费）：热气球吊篮 + 骷髅。走**通用落点**（只有哥布林飞桶走「落点-飞桶」）。
+    "出-气球兵": {
+        "recognition": {
+            "type": "And",
+            "param": {
+                "all_of": [
+                    {
+                        "sub_name": "牌",
+                        "recognition": "TemplateMatch",
+                        "template": "cards/气球兵.png",
+                        "roi": [108, 1011, 712, 1267],
+                        "threshold": 0.85
+                    },
+                    {
+                        // 圣水条第 5 费位置（洋红，与「出牌-圣水够」同一套判据）
+                        "recognition": "ColorMatch",
+                        "roi": [419, 1230, 6, 40],
+                        "method": 40,
+                        "lower": [138, 70, 170],
+                        "upper": [175, 255, 255],
+                        "count": 50
+                    }
+                ],
+                "box_index": 0
+            }
+        },
         "action": {"type": "Click", "param": {"target": true}},
         "pre_delay": 100,
         "post_delay": 350,
         "next": ["落点"],
         "on_error": ["对战等待"]
     },
-    "出-斗笠持刀": {
-        "recognition": {"type": "TemplateMatch", "param": {"template": "cards/t_e9d73288.png", "roi": [108, 1011, 712, 1267], "threshold": 0.85}},
+    "出-武士": {
+        // ★ 门槛：**圣水 ≥ 这张牌自己的费用（5 费）**才出。
+        //   配合 next 按费用从高到低 = 「先出能出的最大牌、余费再补低费」。
+        "recognition": {
+            "type": "And",
+            "param": {
+                "all_of": [
+                    {
+                        "sub_name": "牌",
+                        "recognition": "TemplateMatch",
+                        "template": "cards/武士.png",
+                        "roi": [108, 1011, 712, 1267],
+                        "threshold": 0.85
+                    },
+                    {
+                        // 圣水条第 5 费位置（洋红，与「出牌-圣水够」同一套判据）
+                        "recognition": "ColorMatch",
+                        "roi": [418, 1230, 6, 40],
+                        "method": 40,
+                        "lower": [138, 70, 170],
+                        "upper": [175, 255, 255],
+                        "count": 50
+                    }
+                ],
+                // 点第 0 个子识别（牌）的框 —— 千万别点成圣水条
+                "box_index": 0
+            }
+        },
         "action": {"type": "Click", "param": {"target": true}},
         "pre_delay": 100,
         "post_delay": 350,
         "next": ["落点"],
         "on_error": ["对战等待"]
     },
-    "出-光头大笑": {
-        "recognition": {"type": "TemplateMatch", "param": {"template": "cards/t_d4967fec.png", "roi": [108, 1011, 712, 1267], "threshold": 0.85}},
+    "出-狂暴樵夫": {
+        // ★ 门槛：**圣水 ≥ 这张牌自己的费用（4 费）**才出。
+        //   配合 next 按费用从高到低 = 「先出能出的最大牌、余费再补低费」。
+        "recognition": {
+            "type": "And",
+            "param": {
+                "all_of": [
+                    {
+                        "sub_name": "牌",
+                        "recognition": "TemplateMatch",
+                        "template": "cards/狂暴樵夫.png",
+                        "roi": [108, 1011, 712, 1267],
+                        "threshold": 0.85
+                    },
+                    {
+                        // 圣水条第 4 费位置（洋红，与「出牌-圣水够」同一套判据）
+                        "recognition": "ColorMatch",
+                        "roi": [364, 1230, 6, 40],
+                        "method": 40,
+                        "lower": [138, 70, 170],
+                        "upper": [175, 255, 255],
+                        "count": 50
+                    }
+                ],
+                // 点第 0 个子识别（牌）的框 —— 千万别点成圣水条
+                "box_index": 0
+            }
+        },
         "action": {"type": "Click", "param": {"target": true}},
         "pre_delay": 100,
         "post_delay": 350,
@@ -124,41 +203,178 @@
     },
     // 绿飞龙：普通形态 + 精英形态两套素材并进同一个 template 列表 ——
     // 觉醒机制会让同一张牌在两个形态间交替出现，两套都要能认。
-    "出-绿飞龙": {
-        "recognition": {"type": "TemplateMatch", "param": {"template": ["cards/t_8f7798e5.png", "cards/t_821229c2.png"], "roi": [108, 1011, 712, 1267], "threshold": 0.85}},
+    "出-飞龙宝宝": {
+        // ★ 门槛：**圣水 ≥ 这张牌自己的费用（4 费）**才出。
+        //   配合 next 按费用从高到低 = 「先出能出的最大牌、余费再补低费」。
+        "recognition": {
+            "type": "And",
+            "param": {
+                "all_of": [
+                    {
+                        "sub_name": "牌",
+                        "recognition": "TemplateMatch",
+                        "template": ["cards/飞龙宝宝.png", "cards/飞龙宝宝-进化.png"],
+                        "roi": [108, 1011, 712, 1267],
+                        "threshold": 0.85
+                    },
+                    {
+                        // 圣水条第 4 费位置（洋红，与「出牌-圣水够」同一套判据）
+                        "recognition": "ColorMatch",
+                        "roi": [364, 1230, 6, 40],
+                        "method": 40,
+                        "lower": [138, 70, 170],
+                        "upper": [175, 255, 255],
+                        "count": 50
+                    }
+                ],
+                // 点第 0 个子识别（牌）的框 —— 千万别点成圣水条
+                "box_index": 0
+            }
+        },
         "action": {"type": "Click", "param": {"target": true}},
         "pre_delay": 100,
         "post_delay": 350,
         "next": ["落点"],
         "on_error": ["对战等待"]
     },
-    "出-蓝色亡灵": {
-        "recognition": {"type": "TemplateMatch", "param": {"template": "cards/t_0c77500e.png", "roi": [108, 1011, 712, 1267], "threshold": 0.85}},
+    // ⚠️ 2026-09-29 更正：这个节点原来叫 `出-蝙蝠`、门槛写 **2 费**、模板是 `cards/蝙蝠.png`。
+    //    但把卡面拿去游戏「收藏」里逐张对过之后确认：那张蓝色卡面是**「亡灵」（3 费）**，
+    //    不是蝙蝠。名字错 → 费用门槛也错（2 费 vs 3 费）→ 2 费就会去出这张 3 费的牌。
+    //    现在节点名/模板名/门槛一起对齐真实卡牌。
+    "出-亡灵": {
+        // ★ 门槛：**圣水 ≥ 这张牌自己的费用（3 费）**才出。
+        //   配合 next 按费用从高到低 = 「先出能出的最大牌、余费再补低费」。
+        "recognition": {
+            "type": "And",
+            "param": {
+                "all_of": [
+                    {
+                        "sub_name": "牌",
+                        "recognition": "TemplateMatch",
+                        "template": "cards/亡灵.png",
+                        "roi": [108, 1011, 712, 1267],
+                        "threshold": 0.85
+                    },
+                    {
+                        // 圣水条第 3 费位置（洋红，与「出牌-圣水够」同一套判据）
+                        "recognition": "ColorMatch",
+                        "roi": [309, 1230, 6, 40],
+                        "method": 40,
+                        "lower": [138, 70, 170],
+                        "upper": [175, 255, 255],
+                        "count": 50
+                    }
+                ],
+                // 点第 0 个子识别（牌）的框 —— 千万别点成圣水条
+                "box_index": 0
+            }
+        },
         "action": {"type": "Click", "param": {"target": true}},
         "pre_delay": 100,
         "post_delay": 350,
         "next": ["落点"],
         "on_error": ["对战等待"]
     },
-    // 绿哥布林：同样两套形态
-    "出-绿哥布林": {
-        "recognition": {"type": "TemplateMatch", "param": {"template": ["cards/t_fb73fd20.png", "cards/t_0ef50e6e.png"], "roi": [108, 1011, 712, 1267], "threshold": 0.85}},
+    // 绿哥布林 = **哥布林飞桶**（同样两套形态）。
+    // ⚠️ 2026-09-29 用户要求：**只有这张卡换专用落点，别的卡一律不动**。
+    //    理由：飞桶是**投掷物** —— 按通用落点丢己方桥头，它还得自己飞过去、半路容易被解；
+    //    直接砸到敌方塔上才合理。所以它走 `落点-飞桶`（→ 敌方一塔 / 塔破了改砸大本营）。
+    "出-哥布林飞桶": {
+        // ★ 门槛：**圣水 ≥ 这张牌自己的费用（3 费）**才出。
+        //   配合 next 按费用从高到低 = 「先出能出的最大牌、余费再补低费」。
+        "recognition": {
+            "type": "And",
+            "param": {
+                "all_of": [
+                    {
+                        "sub_name": "牌",
+                        "recognition": "TemplateMatch",
+                        "template": ["cards/哥布林飞桶.png", "cards/哥布林飞桶-进化.png"],
+                        "roi": [108, 1011, 712, 1267],
+                        "threshold": 0.85
+                    },
+                    {
+                        // 圣水条第 3 费位置（洋红，与「出牌-圣水够」同一套判据）
+                        "recognition": "ColorMatch",
+                        "roi": [309, 1230, 6, 40],
+                        "method": 40,
+                        "lower": [138, 70, 170],
+                        "upper": [175, 255, 255],
+                        "count": 50
+                    }
+                ],
+                // 点第 0 个子识别（牌）的框 —— 千万别点成圣水条
+                "box_index": 0
+            }
+        },
+        "action": {"type": "Click", "param": {"target": true}},
+        "pre_delay": 100,
+        "post_delay": 350,
+        "next": ["落点-飞桶"],
+        "on_error": ["对战等待"]
+    },
+    "出-火精灵": {
+        // ★ 门槛：**圣水 ≥ 这张牌自己的费用（1 费）**才出。
+        //   配合 next 按费用从高到低 = 「先出能出的最大牌、余费再补低费」。
+        "recognition": {
+            "type": "And",
+            "param": {
+                "all_of": [
+                    {
+                        "sub_name": "牌",
+                        "recognition": "TemplateMatch",
+                        "template": "cards/火精灵.png",
+                        "roi": [108, 1011, 712, 1267],
+                        "threshold": 0.85
+                    },
+                    {
+                        // 圣水条第 1 费位置（洋红，与「出牌-圣水够」同一套判据）
+                        "recognition": "ColorMatch",
+                        "roi": [201, 1230, 6, 40],
+                        "method": 40,
+                        "lower": [138, 70, 170],
+                        "upper": [175, 255, 255],
+                        "count": 50
+                    }
+                ],
+                // 点第 0 个子识别（牌）的框 —— 千万别点成圣水条
+                "box_index": 0
+            }
+        },
         "action": {"type": "Click", "param": {"target": true}},
         "pre_delay": 100,
         "post_delay": 350,
         "next": ["落点"],
         "on_error": ["对战等待"]
     },
-    "出-火焰怪": {
-        "recognition": {"type": "TemplateMatch", "param": {"template": "cards/t_b67790c6.png", "roi": [108, 1011, 712, 1267], "threshold": 0.85}},
-        "action": {"type": "Click", "param": {"target": true}},
-        "pre_delay": 100,
-        "post_delay": 350,
-        "next": ["落点"],
-        "on_error": ["对战等待"]
-    },
-    "出-白骨": {
-        "recognition": {"type": "TemplateMatch", "param": {"template": "cards/t_31c457a6.png", "roi": [108, 1011, 712, 1267], "threshold": 0.85}},
+    "出-骷髅兵": {
+        // ★ 门槛：**圣水 ≥ 这张牌自己的费用（1 费）**才出。
+        //   配合 next 按费用从高到低 = 「先出能出的最大牌、余费再补低费」。
+        "recognition": {
+            "type": "And",
+            "param": {
+                "all_of": [
+                    {
+                        "sub_name": "牌",
+                        "recognition": "TemplateMatch",
+                        "template": "cards/骷髅兵.png",
+                        "roi": [108, 1011, 712, 1267],
+                        "threshold": 0.85
+                    },
+                    {
+                        // 圣水条第 1 费位置（洋红，与「出牌-圣水够」同一套判据）
+                        "recognition": "ColorMatch",
+                        "roi": [201, 1230, 6, 40],
+                        "method": 40,
+                        "lower": [138, 70, 170],
+                        "upper": [175, 255, 255],
+                        "count": 50
+                    }
+                ],
+                // 点第 0 个子识别（牌）的框 —— 千万别点成圣水条
+                "box_index": 0
+            }
+        },
         "action": {"type": "Click", "param": {"target": true}},
         "pre_delay": 100,
         "post_delay": 350,
@@ -195,6 +411,41 @@
     "落点-桥头": {
         "recognition": {"type": "DirectHit", "param": {}},
         "action": {"type": "Click", "param": {"target": [172, 590]}},
+        "post_delay": 1200,
+        "next": ["对战循环入口"]
+    },
+    // ——— 飞桶专用落点（只有 `出-绿哥布林` 走这里）———
+    // 判据与「落点」同源：**左路公主塔的血条**（roi [138,166,8,30]，H155~179 洋红）。
+    //   · 血条还在（塔没破） → 砸**敌方左路公主塔** (187,255)
+    //   · 血条没了（塔已破） → 砸**敌方国王塔**   (421,163)
+    // ⚠️ 坐标是从 720×1280 实战帧上量的（frame 里敌方左塔身躯 y≈196~314、国王塔 y≈101~225）。
+    // ⚠️ `落点-飞桶-大本营` 用 `inverse: true`（与 `落点-破塔深位` 同一套写法），
+    //    而且协议要求 inverse 节点里 Click 必须**显式给坐标**，不能靠 target:true。
+    "落点-飞桶": {
+        "recognition": {"type": "DirectHit", "param": {}},
+        "action": {"type": "DoNothing", "param": {}},
+        "next": ["落点-飞桶-大本营", "落点-飞桶-一塔"]
+    },
+    "落点-飞桶-大本营": {
+        "recognition": {
+            "type": "ColorMatch",
+            "param": {
+                "roi": [138, 166, 8, 30],
+                "method": 40,
+                "lower": [155, 120, 150],
+                "upper": [179, 255, 255],
+                "count": 50
+            }
+        },
+        "inverse": true,
+        "action": {"type": "Click", "param": {"target": [421, 163]}},
+        "post_delay": 1200,
+        "next": ["对战循环入口"],
+        "on_error": ["落点-飞桶-一塔"]
+    },
+    "落点-飞桶-一塔": {
+        "recognition": {"type": "DirectHit", "param": {}},
+        "action": {"type": "Click", "param": {"target": [187, 255]}},
         "post_delay": 1200,
         "next": ["对战循环入口"]
     },

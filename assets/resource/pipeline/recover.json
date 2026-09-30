@@ -69,12 +69,18 @@
                         "recognition": {
                             "type": "TemplateMatch",
                             "param": {
+                                // ⚠️ 2026-09-30 修悬空引用：这里原来写的是 10 个哈希名
+                                //    （`t_fb73fd20.png` 等）。那批文件已按**内容 md5 重命名**成
+                                //    中文卡名（实测 10/10 内容逐字节一致，旧名就是「t_ + md5 前 8 位」），
+                                //    旧名在仓库里已不存在 ⇒ 这一项会**永远认不到**。
+                                //    这里换成新名字，语义完全不变（这一项要与 battle.json 的手牌
+                                //    模板保持一致，两边用同一批卡面）。
                                 "template": [
-                                    "cards/t_fb73fd20.png", "cards/t_8f7798e5.png",
-                                    "cards/t_45758bb8.png", "cards/t_e9d73288.png",
-                                    "cards/t_0c77500e.png", "cards/t_d4967fec.png",
-                                    "cards/t_b67790c6.png", "cards/t_31c457a6.png",
-                                    "cards/t_0ef50e6e.png", "cards/t_821229c2.png"
+                                    "cards/哥布林飞桶.png", "cards/飞龙宝宝.png",
+                                    "cards/气球兵.png", "cards/武士.png",
+                                    "cards/亡灵.png", "cards/狂暴樵夫.png",
+                                    "cards/火精灵.png", "cards/骷髅兵.png",
+                                    "cards/哥布林飞桶-进化.png", "cards/飞龙宝宝-进化.png"
                                 ],
                                 "roi": [108, 1011, 712, 1267],
                                 "threshold": 0.85

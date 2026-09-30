@@ -55,24 +55,9 @@
             ]
         },
         {
-            "name": "自动战斗",
-            "entry": "启动检查",
-            "default_check": true,
-            "pipeline_override": {
-                "主界面锚点": {
-                    "next": [
-                        "对战循环入口"
-                    ]
-                }
-            },
-            "description": "自动打对局：进游戏 → 出牌 → 打完一局 → 再开下一局，一直打到设定的局数。\n\n出牌策略用界面上的「**对战策略**」—— 它在全局设置里，所有打局的地方共用。\n\n认不出画面时它会自己想办法：先试着退回主界面，还不行就重开游戏。\n\n⚠️ 它的目标是 **快速刷完尽可能多的局**（刷宝箱、对局时长、卡牌大师进度），**不是上分** —— 所以「输」是正常的。它好不好用要看 **每局耗时**，不是胜率。",
-            "option": [
-                "打几局"
-            ]
-        },
-        {
             "name": "领商店礼包",
             "entry": "商店任务",
+            "default_check": true,
             // ⚠️ 这个 override 是**必须的**，不是可有可无的润色。
             // 「环境准备」是 DirectHit，永远命中 —— 所以任何任务都会先走完整条启动链，
             // 最后停在「主界面锚点」上。而主界面锚点的 next 默认是**空的**，
@@ -85,7 +70,7 @@
                     ]
                 }
             },
-            "description": "打开商店，把能白拿的东西领掉。\n\n走的是实测出来的真实路径：底部「商店」→ 左上「礼物盒」分类 → 「超值推荐」页签 → 往下翻到「每日精选」→ 点第一格的绿色「免费！」卡 → 弹窗里点绿色「免费！」按钮。\n\n⚠️ 商店那一页**非常长**：实测往下翻 30 屏还是付费项。所以它会**一屏一屏慢慢往下翻**（每屏停稳看清了再翻下一页，滑快了识别会漏），翻到底还是没有就跳过、收工回主界面 —— 不会卡住反复翻，也不会报错。\n\n只领免费的：那个绿色「免费！」按钮是**先认出来再点**的，不会瞎点坐标误领要花宝石的卡。",
+            "description": "打开商店，把能白拿的东西领掉。\n\n走的是实测出来的真实路径：底部「商店」→ 左上「礼物盒」分类 → 「超值推荐」页签 → 往下翻，沿途把能白拿的领掉，翻到底就收工回主界面。\n\n能白拿的有两类：\n· **维护 / 异常补偿礼包**：官方维护后挂在列表里，卡片底部是一条**深色横条 + 白字「免费！」**。点它 → 弹「确认购买？」→ 点里面的绿色「免费！」。2026-09-30 实测两款（「炽焰战甲异常补偿」「维护补偿！」）都能自动领到。\n· **每日免费礼物**：固定在「每日精选」那块的第一格（浅绿底「免费！」卡），每天一次。\n\n⚠️ 商店那一页**非常长**：实测往下翻 30 屏还是付费项。所以它会**一屏一屏慢慢往下翻**（每屏停稳看清了再翻下一页，滑快了识别会漏），翻到底还是没有就跳过、收工回主界面 —— 不会卡住反复翻，也不会报错。\n\n只领免费的：两个「免费！」按钮都是**先认出来再点**的，不会瞎点坐标误领要花宝石的卡。",
             "option": [
                 "领取内容",
                 "商店翻几屏"
@@ -104,12 +89,35 @@
             },
             "description": "进部落聊天，把能捐的卡捐出去。\n\n只点亮着的「捐赠」按钮 —— 按钮暗着的是「你没有这张卡」（界面上写着「您有 0/…」），捐不了。点一下就直接捐出去了。\n\n当前这屏没有能捐的，它会往上翻聊天记录找，最多翻 8 屏；翻到底还是没有就跳过、收工。\n\n⚠️ 游戏不允许「只捐一部分」：点一下就把这个请求还差的那几张全捐出，所以下面的数字是折算出来的，不是精确张数。\n\n捐完之后才点一次底部的「确定」—— 那是退出聊天的按钮，每捐一次都点它会直接退出来，所以只在最后点一下。",
             "option": [
-                "每次捐赠几张"
+                "每次捐赠几张",
+                "请求卡牌",
+                "要请求的卡牌"
+            ]
+        },
+        {
+            "name": "自动战斗",
+            "entry": "启动检查",
+            // ⚠️ 默认**不勾**，且必须与预设里那条 "enabled": false 保持一致 ——
+            // 包里预置了实例配置（绕开首次启动的时序缺陷），那种情况下**不走 ApplyPreset**，
+            // 勾选状态就退回用这个 default_check 了。
+            "default_check": false,
+            "pipeline_override": {
+                "主界面锚点": {
+                    "next": [
+                        "对战循环入口"
+                    ]
+                }
+            },
+            "description": "自动打对局：进游戏 → 出牌 → 打完一局 → 再开下一局，一直打到设定的局数。\n\n⚠️ 「对战策略」这个下拉**放在每个任务自己的设置里**，不放在全局设置区 ——\n因为只要 interface.json 里有 `setting` 字段，MFAAvalonia 点「开始任务」时会崩（见文件上方注释）。\n\n认不出画面时它会自己想办法：先试着退回主界面，还不行就重开游戏。\n\n⚠️ 它的目标是 **快速刷完尽可能多的局**（刷宝箱、对局时长、卡牌大师进度），**不是上分** —— 所以「输」是正常的。它好不好用要看 **每局耗时**，不是胜率。",
+            "option": [
+                "打几局",
+                "对战策略"
             ]
         },
         {
             "name": "日常循环",
             "entry": "循环任务入口",
+            "default_check": true,
             // ★ 重复次数用 MFAAvalonia 的扩展字段 —— ProjectInterface V2 协议本身没有。
             // 官方 README：「MFAAvalonia 在 Project Interface V2 的 task 项中额外支持
             //   repeatable / repeat_count」，开了之后界面里会多一个重复次数控件，
@@ -124,7 +132,10 @@
             "description": "一轮 = **自动战斗（打几局）+ 部落捐赠（捐一次）**，跑完回主界面结束；下一轮由客户端自动接着开始。\n\n**「跑几轮」用这个任务的「重复次数」控件设置**（默认 1）。之所以不给一个「跑几轮」输入框：流水线的计数额度是一次运行内只减不增的，填「3 局 × 3 轮」会变成第一轮连打 9 局、后两轮不打了；交给客户端重复，每轮才是真的每轮。\n\n⚠️ 这个「重复次数」是 MFAAvalonia 的扩展功能，命令行版 MaaPiCli 等客户端可能没有 —— 在那些客户端里它只跑一轮。",
             "option": [
                 "打几局",
-                "每次捐赠几张"
+                "对战策略",
+                "每次捐赠几张",
+                "请求卡牌",
+                "要请求的卡牌"
             ],
             "pipeline_override": {
                 "主界面锚点": {
@@ -146,6 +157,10 @@
         {
             "name": "退出游戏",
             "entry": "退出任务",
+            "default_check": true,
+            // 显式给一个空 option —— 其他 5 个任务都有 option，只有它没有。
+            // 界面把任务写回配置文件时，字段不齐容易出岔子（实测这个实例曾「配置保存失败」）。
+            "option": [],
             "description": "直接把游戏关掉，然后任务结束。\n\n它**不做任何前置动作** —— 不拉起游戏、不回主界面，也没有选项。\n\n放在「日常一条龙」预设的最后一步，作用就是「跑完收工、把游戏关掉」；不选它，游戏会一直开着。"
         }
     ],
@@ -251,6 +266,25 @@
                 }
             }
         },
+        "请求卡牌": {
+            "type": "switch",
+            "label": "顺便请求卡牌",
+            "description": "捐完卡之后，顺手在部落聊天里发一次卡牌请求（默认开）。\n\n**要请求哪一张，由下面「要请求的卡牌」那个下拉决定**（默认「电击法术」）。\n\n⚠️ 请求本身有冷却（约 7 小时）。**冷却中脚本什么都不点** —— 判据是底部那个橙色按钮上的字：冷却时它会从「请求卡牌」变成「请求换卡」，认不到就整步跳过。\n这条判据是必须的：冷却中如果盲点，游戏会弹「立即请求捐赠？」，里面那个绿色按钮**要花 2 宝石**跳过冷却。\n\n⚠️ 这一步**出任何岔子都不会让任务失败** —— 认不到按钮 / 弹窗没开 / 整张列表翻完也没找到你要的那张卡，都会关掉弹窗、照常收尾。",
+            "default_case": "Yes",
+            "cases": [
+                {
+                    "name": "Yes"
+                },
+                {
+                    "name": "No",
+                    "pipeline_override": {
+                        "部落请求卡牌": {
+                            "enabled": false
+                        }
+                    }
+                }
+            ]
+        },
         "游戏版本": {
             "type": "select",
             "label": "游戏版本",
@@ -277,11 +311,16 @@
             "label": "领取内容",
             // ⚠️ 两个 case 都**故意不带 pipeline_override**。
             // 纯 JSON 化之后，这两类东西的领取逻辑写在流水线里分不出来 ——
-            // 区别只是「商店里长什么样的东西算数」，而流水线认的判据是同一套
-            // （OCR 认「免费」两个字 + 拉到底就跳过）。所以这里是**声明式**的：
+            // 区别只是「商店里长什么样的东西算数」，所以这里是**声明式**的：
             // 选了哪个，就表示你希望它去扫哪一类；扫不到不会报错，会拉到底然后跳过。
             // 2026-09-24：case 名按用户口径从「维护礼物」改成「维护补偿」（同一个东西）。
-            "description": "选这次去商店扫哪几类东西，**默认两个都选**。\n**扫不到不会报错，翻到底就自动跳过**，接着扫下一个。\n\n· 每日免费礼物：商店里标着「免费」的东西，每天一次。\n· 维护补偿：官方发维护补偿时商店会挂出来。**目前游戏里没有这个入口**，所以现在选上它会扫一遍、翻到底、然后跳过 —— 等官方真发了，补上识别模板就能用，界面这里不用再改。\n\n⚠️ 「每天只领一次、跨天自动恢复」不是靠脚本记账，而是**游戏自己重置**：领过的格子当天显示「已收集！」，第二天变回「免费！」。所以脚本不用管，扫到就领、扫不到跳过即可。",
+            // ⚠️ 2026-09-30 更正：这两类的**识别判据其实不同** ——
+            //   补偿礼包认的是卡片底部那条**深色**「免费！」横条（`shop/free_label_dark.png`），
+            //   每日免费礼物认的是「每日精选」左列第一格那张**浅绿底**的「免费！」卡
+            //   （`shop/free_label.png`，roi 锁在左列）。两者底色差异大，模板天然分得开
+            //   （实测正样本 0.996+ / 负样本 ≤0.64）。所以「扫哪几类」这个开关只影响
+            //   你**期望**扫到什么，并不改变流水线的判据 —— 两个都选就是两类都扫。
+            "description": "选这次去商店扫哪几类东西，**默认两个都选**。\n**扫不到不会报错，翻到底就自动跳过**，接着扫下一个。\n\n· 每日免费礼物：商店里标着「免费」的东西，每天一次。\n· 维护补偿：官方发维护补偿时商店会挂出来。**2026-09-30 已实机验证可自动领取** —— 「炽焰战甲异常补偿」「维护补偿！」两款都领到了，认的是卡片底部那条深色「免费！」按钮。没维护的日子扫不到，会自动跳过。\n\n⚠️ 「每天只领一次、跨天自动恢复」不是靠脚本记账，而是**游戏自己重置**：领过的格子当天显示「已收集！」，第二天变回「免费！」。所以脚本不用管，扫到就领、扫不到跳过即可。",
             "default_case": [
                 "每日免费礼物",
                 "维护补偿"
@@ -294,47 +333,326 @@
                     "name": "维护补偿"
                 }
             ]
-        }
-    },
-    // 「对战策略」是**所有打局的地方共用**的一个参数，所以放在这里（全局设置区），
-    // 而不是绑在某个任务上 —— 切任务时它不跟着变，界面上只出现这一处。
-    // （2026-09-24：先按用户要求挪进过任务，用户看过界面后要求挪回来。）
-    "setting": [
-        {
-            "name": "battle_setting",
-            "label": "全局设置",
-            "description": "对所有任务生效。",
-            "option": [
-                "对战策略"
+        },
+        // ★ 2026-09-27 新增：请求目标卡改成界面可选（原来写死「电击法术」一张模板）。
+        //   写法：select 单选，case 名 = 游戏里的中文卡名；每个 case 只换掉
+        //   `部落长按目标卡` 的模板（pipeline_override 是**深合并**，roi / threshold 保留），
+        //   所以支持 N 张卡只多出「一个下拉 + 一批模板文件」。
+        //   模板在 `resource/image/clan/request_targets/card_001..071.png`，
+        //   编号↔卡名映射见同目录 `index.json`。
+        "要请求的卡牌": {
+            "type": "select",
+            "label": "要请求的卡牌",
+            "description": "捐完卡之后要请求哪一张卡（单选下拉）。\\n\\n**展示位置**：在「部落捐赠」和「日常循环」两个任务各自的设置区里，紧跟在「顺便请求卡牌」开关后面 —— 开关决定**要不要**请求，这里决定**请求哪一张**。\\n\\n**交互方式**：单选下拉，列出的是**你这个账号**在游戏「选择您想要的卡牌」弹窗里**当前可请求**的卡（满级卡不能请求，已经剔除）。默认「电击法术」，与旧版本行为一致。\\n\\n**状态反馈**：\\n· 界面层：选中项就是保存进配置的值；控件本身不会变化（ProjectInterface 的 option 没有运行时状态字段，界面不显示进度）。\\n· 运行层：看任务日志区 —— `部落长按目标卡` 命中就说明找到了这张卡并已长按；如果打出 `部落放弃找卡`（focus 文案「弹窗里没找到要请求的那张卡」），意思是**整张列表翻完都没找到**，会跳过请求继续收尾，**不报错、也不会乱点别的卡**。\\n\\n⚠️ 这份名单是 2026-09-27 从实机弹窗采的（71 张可请求卡）。游戏出新卡、或你的卡升到满级之后，名单会和游戏里对不上 —— 重新采一次即可（`tools/capture_request_popup.py` → `cut_request_targets.py` → `name_request_targets.py` → `gen_request_target_option.py`）。",
+            "default_case": "电击法术",
+            "cases": [
+                {
+                    "name": "万箭齐发",
+                    "pipeline_override": {"部落长按目标卡": {"recognition": {"param": {"template": "clan/request_targets/card_001.png"}}}}
+                },
+                {
+                    "name": "亡灵大军",
+                    "pipeline_override": {"部落长按目标卡": {"recognition": {"param": {"template": "clan/request_targets/card_002.png"}}}}
+                },
+                {
+                    "name": "亡灵巨人",
+                    "pipeline_override": {"部落长按目标卡": {"recognition": {"param": {"template": "clan/request_targets/card_003.png"}}}}
+                },
+                {
+                    "name": "伤害药水法术",
+                    "pipeline_override": {"部落长按目标卡": {"recognition": {"param": {"template": "clan/request_targets/card_004.png"}}}}
+                },
+                {
+                    "name": "克隆法术",
+                    "pipeline_override": {"部落长按目标卡": {"recognition": {"param": {"template": "clan/request_targets/card_005.png"}}}}
+                },
+                {
+                    "name": "冰冻法术",
+                    "pipeline_override": {"部落长按目标卡": {"recognition": {"param": {"template": "clan/request_targets/card_006.png"}}}}
+                },
+                {
+                    "name": "冰雪精灵",
+                    "pipeline_override": {"部落长按目标卡": {"recognition": {"param": {"template": "clan/request_targets/card_007.png"}}}}
+                },
+                {
+                    "name": "加农炮",
+                    "pipeline_override": {"部落长按目标卡": {"recognition": {"param": {"template": "clan/request_targets/card_008.png"}}}}
+                },
+                {
+                    "name": "加农炮战车",
+                    "pipeline_override": {"部落长按目标卡": {"recognition": {"param": {"template": "clan/request_targets/card_009.png"}}}}
+                },
+                {
+                    "name": "十字连弩",
+                    "pipeline_override": {"部落长按目标卡": {"recognition": {"param": {"template": "clan/request_targets/card_010.png"}}}}
+                },
+                {
+                    "name": "哥布林",
+                    "pipeline_override": {"部落长按目标卡": {"recognition": {"param": {"template": "clan/request_targets/card_011.png"}}}}
+                },
+                {
+                    "name": "哥布林团伙",
+                    "pipeline_override": {"部落长按目标卡": {"recognition": {"param": {"template": "clan/request_targets/card_012.png"}}}}
+                },
+                {
+                    "name": "哥布林小屋",
+                    "pipeline_override": {"部落长按目标卡": {"recognition": {"param": {"template": "clan/request_targets/card_013.png"}}}}
+                },
+                {
+                    "name": "哥布林巨人",
+                    "pipeline_override": {"部落长按目标卡": {"recognition": {"param": {"template": "clan/request_targets/card_014.png"}}}}
+                },
+                {
+                    "name": "哥布林爆破手",
+                    "pipeline_override": {"部落长按目标卡": {"recognition": {"param": {"template": "clan/request_targets/card_015.png"}}}}
+                },
+                {
+                    "name": "哥布林牢笼",
+                    "pipeline_override": {"部落长按目标卡": {"recognition": {"param": {"template": "clan/request_targets/card_016.png"}}}}
+                },
+                {
+                    "name": "哥布林钻机",
+                    "pipeline_override": {"部落长按目标卡": {"recognition": {"param": {"template": "clan/request_targets/card_017.png"}}}}
+                },
+                {
+                    "name": "哥布林魔咒",
+                    "pipeline_override": {"部落长按目标卡": {"recognition": {"param": {"template": "clan/request_targets/card_018.png"}}}}
+                },
+                {
+                    "name": "圣水收集器",
+                    "pipeline_override": {"部落长按目标卡": {"recognition": {"param": {"template": "clan/request_targets/card_019.png"}}}}
+                },
+                {
+                    "name": "地狱之塔",
+                    "pipeline_override": {"部落长按目标卡": {"recognition": {"param": {"template": "clan/request_targets/card_020.png"}}}}
+                },
+                {
+                    "name": "女巫",
+                    "pipeline_override": {"部落长按目标卡": {"recognition": {"param": {"template": "clan/request_targets/card_021.png"}}}}
+                },
+                {
+                    "name": "巨人",
+                    "pipeline_override": {"部落长按目标卡": {"recognition": {"param": {"template": "clan/request_targets/card_022.png"}}}}
+                },
+                {
+                    "name": "巨石投手",
+                    "pipeline_override": {"部落长按目标卡": {"recognition": {"param": {"template": "clan/request_targets/card_023.png"}}}}
+                },
+                {
+                    "name": "弓箭手",
+                    "pipeline_override": {"部落长按目标卡": {"recognition": {"param": {"template": "clan/request_targets/card_024.png"}}}}
+                },
+                {
+                    "name": "戈仑石人",
+                    "pipeline_override": {"部落长按目标卡": {"recognition": {"param": {"template": "clan/request_targets/card_025.png"}}}}
+                },
+                {
+                    "name": "战斗天使",
+                    "pipeline_override": {"部落长按目标卡": {"recognition": {"param": {"template": "clan/request_targets/card_026.png"}}}}
+                },
+                {
+                    "name": "攻城炸弹人",
+                    "pipeline_override": {"部落长按目标卡": {"recognition": {"param": {"template": "clan/request_targets/card_027.png"}}}}
+                },
+                {
+                    "name": "法师",
+                    "pipeline_override": {"部落长按目标卡": {"recognition": {"param": {"template": "clan/request_targets/card_028.png"}}}}
+                },
+                {
+                    "name": "火枪手",
+                    "pipeline_override": {"部落长按目标卡": {"recognition": {"param": {"template": "clan/request_targets/card_029.png"}}}}
+                },
+                {
+                    "name": "火球",
+                    "pipeline_override": {"部落长按目标卡": {"recognition": {"param": {"template": "clan/request_targets/card_030.png"}}}}
+                },
+                {
+                    "name": "炸弹兵",
+                    "pipeline_override": {"部落长按目标卡": {"recognition": {"param": {"template": "clan/request_targets/card_031.png"}}}}
+                },
+                {
+                    "name": "炸弹塔",
+                    "pipeline_override": {"部落长按目标卡": {"recognition": {"param": {"template": "clan/request_targets/card_032.png"}}}}
+                },
+                {
+                    "name": "烈焰熔炉",
+                    "pipeline_override": {"部落长按目标卡": {"recognition": {"param": {"template": "clan/request_targets/card_033.png"}}}}
+                },
+                {
+                    "name": "烟花炮手",
+                    "pipeline_override": {"部落长按目标卡": {"recognition": {"param": {"template": "clan/request_targets/card_034.png"}}}}
+                },
+                {
+                    "name": "特斯拉电磁塔",
+                    "pipeline_override": {"部落长按目标卡": {"recognition": {"param": {"template": "clan/request_targets/card_035.png"}}}}
+                },
+                {
+                    "name": "狂战士",
+                    "pipeline_override": {"部落长按目标卡": {"recognition": {"param": {"template": "clan/request_targets/card_036.png"}}}}
+                },
+                {
+                    "name": "狂暴法术",
+                    "pipeline_override": {"部落长按目标卡": {"recognition": {"param": {"template": "clan/request_targets/card_037.png"}}}}
+                },
+                {
+                    "name": "猎人",
+                    "pipeline_override": {"部落长按目标卡": {"recognition": {"param": {"template": "clan/request_targets/card_038.png"}}}}
+                },
+                {
+                    "name": "王子",
+                    "pipeline_override": {"部落长按目标卡": {"recognition": {"param": {"template": "clan/request_targets/card_039.png"}}}}
+                },
+                {
+                    "name": "电击法术",
+                    "pipeline_override": {"部落长按目标卡": {"recognition": {"param": {"template": "clan/request_targets/card_040.png"}}}}
+                },
+                {
+                    "name": "电击车小队",
+                    "pipeline_override": {"部落长按目标卡": {"recognition": {"param": {"template": "clan/request_targets/card_041.png"}}}}
+                },
+                {
+                    "name": "皇家卫队",
+                    "pipeline_override": {"部落长按目标卡": {"recognition": {"param": {"template": "clan/request_targets/card_042.png"}}}}
+                },
+                {
+                    "name": "皇家巨人",
+                    "pipeline_override": {"部落长按目标卡": {"recognition": {"param": {"template": "clan/request_targets/card_043.png"}}}}
+                },
+                {
+                    "name": "皇家速递",
+                    "pipeline_override": {"部落长按目标卡": {"recognition": {"param": {"template": "clan/request_targets/card_044.png"}}}}
+                },
+                {
+                    "name": "皇家野猪",
+                    "pipeline_override": {"部落长按目标卡": {"recognition": {"param": {"template": "clan/request_targets/card_045.png"}}}}
+                },
+                {
+                    "name": "皮卡超人",
+                    "pipeline_override": {"部落长按目标卡": {"recognition": {"param": {"template": "clan/request_targets/card_046.png"}}}}
+                },
+                {
+                    "name": "符文巨人",
+                    "pipeline_override": {"部落长按目标卡": {"recognition": {"param": {"template": "clan/request_targets/card_047.png"}}}}
+                },
+                {
+                    "name": "绿林团伙",
+                    "pipeline_override": {"部落长按目标卡": {"recognition": {"param": {"template": "clan/request_targets/card_048.png"}}}}
+                },
+                {
+                    "name": "藤蔓法术",
+                    "pipeline_override": {"部落长按目标卡": {"recognition": {"param": {"template": "clan/request_targets/card_049.png"}}}}
+                },
+                {
+                    "name": "虚空法术",
+                    "pipeline_override": {"部落长按目标卡": {"recognition": {"param": {"template": "clan/request_targets/card_050.png"}}}}
+                },
+                {
+                    "name": "蝙蝠",
+                    "pipeline_override": {"部落长按目标卡": {"recognition": {"param": {"template": "clan/request_targets/card_051.png"}}}}
+                },
+                {
+                    "name": "迫击炮",
+                    "pipeline_override": {"部落长按目标卡": {"recognition": {"param": {"template": "clan/request_targets/card_052.png"}}}}
+                },
+                {
+                    "name": "野蛮人",
+                    "pipeline_override": {"部落长按目标卡": {"recognition": {"param": {"template": "clan/request_targets/card_053.png"}}}}
+                },
+                {
+                    "name": "野蛮人小屋",
+                    "pipeline_override": {"部落长按目标卡": {"recognition": {"param": {"template": "clan/request_targets/card_054.png"}}}}
+                },
+                {
+                    "name": "野蛮人攻城槌",
+                    "pipeline_override": {"部落长按目标卡": {"recognition": {"param": {"template": "clan/request_targets/card_055.png"}}}}
+                },
+                {
+                    "name": "野蛮人滚筒",
+                    "pipeline_override": {"部落长按目标卡": {"recognition": {"param": {"template": "clan/request_targets/card_056.png"}}}}
+                },
+                {
+                    "name": "镜像法术",
+                    "pipeline_override": {"部落长按目标卡": {"recognition": {"param": {"template": "clan/request_targets/card_057.png"}}}}
+                },
+                {
+                    "name": "雷电巨人",
+                    "pipeline_override": {"部落长按目标卡": {"recognition": {"param": {"template": "clan/request_targets/card_058.png"}}}}
+                },
+                {
+                    "name": "雷电法术",
+                    "pipeline_override": {"部落长按目标卡": {"recognition": {"param": {"template": "clan/request_targets/card_059.png"}}}}
+                },
+                {
+                    "name": "雷电精灵",
+                    "pipeline_override": {"部落长按目标卡": {"recognition": {"param": {"template": "clan/request_targets/card_060.png"}}}}
+                },
+                {
+                    "name": "雷电飞龙",
+                    "pipeline_override": {"部落长按目标卡": {"recognition": {"param": {"template": "clan/request_targets/card_061.png"}}}}
+                },
+                {
+                    "name": "飓风法术",
+                    "pipeline_override": {"部落长按目标卡": {"recognition": {"param": {"template": "clan/request_targets/card_062.png"}}}}
+                },
+                {
+                    "name": "飞斧屠夫",
+                    "pipeline_override": {"部落长按目标卡": {"recognition": {"param": {"template": "clan/request_targets/card_063.png"}}}}
+                },
+                {
+                    "name": "飞行器",
+                    "pipeline_override": {"部落长按目标卡": {"recognition": {"param": {"template": "clan/request_targets/card_064.png"}}}}
+                },
+                {
+                    "name": "骑士",
+                    "pipeline_override": {"部落长按目标卡": {"recognition": {"param": {"template": "clan/request_targets/card_065.png"}}}}
+                },
+                {
+                    "name": "骷髅军团",
+                    "pipeline_override": {"部落长按目标卡": {"recognition": {"param": {"template": "clan/request_targets/card_066.png"}}}}
+                },
+                {
+                    "name": "骷髅守卫",
+                    "pipeline_override": {"部落长按目标卡": {"recognition": {"param": {"template": "clan/request_targets/card_067.png"}}}}
+                },
+                {
+                    "name": "骷髅巨人",
+                    "pipeline_override": {"部落长按目标卡": {"recognition": {"param": {"template": "clan/request_targets/card_068.png"}}}}
+                },
+                {
+                    "name": "骷髅气球",
+                    "pipeline_override": {"部落长按目标卡": {"recognition": {"param": {"template": "clan/request_targets/card_069.png"}}}}
+                },
+                {
+                    "name": "骷髅飞龙",
+                    "pipeline_override": {"部落长按目标卡": {"recognition": {"param": {"template": "clan/request_targets/card_070.png"}}}}
+                },
+                {
+                    "name": "黑暗王子",
+                    "pipeline_override": {"部落长按目标卡": {"recognition": {"param": {"template": "clan/request_targets/card_071.png"}}}}
+                }
             ]
         }
-    ],
+    },
+
+    // ⚠️⚠️ **这里故意没有 `setting` 字段**（2026-09-25 实测踩死，别再加回来）：
+    //   只要 interface.json 里有 `setting`，点「开始任务」时 MFAAvalonia 会走到
+    //   `TaskLoader.CreateSettingItem(MaaInterfaceSetting …)`，而它在**非 UI 线程**里调
+    //   `TaskQueueView.SetOption` → 抛 `InvalidOperationException: Call from invalid thread`
+    //   → `StartInternal` 中断、`EndTaskRun()` 没执行 → **任务锁永久占住**：
+    //   之后每次点开始都被「任务启动请求已忽略」挡掉，**点停止也不管用**，只能重启程序。
+    //   ⇒「对战策略」放在任务自己的 option 里 —— 见「自动战斗」「日常循环」。
+    // ★ 只保留**一个**预设（用户要求：一个预设就能跑完日常，不必切换）。
+    //   6 个任务**全都列出来**（「涵盖所有子任务」），但「自动战斗」「部落捐赠」
+    //   默认**不勾** —— 它们的内容已经被「日常循环」包含（一轮 = 打几局 + 捐一次），
+    //   勾上会重复执行。要单独加练时再手动勾。
+    // ⚠️ 顺带避开 MFAAvalonia 的一个**初始化竞态**：启动时它会为**每个 preset 各建一个实例**，
+    //   并几乎同时应用预设；先执行的那个可能赶在 `Processor.TasksSource` 填充完之前，
+    //   于是「按名字找不到任务模板」→ 任务列表被清空（只剩全局设置），而且不会重试。
+    //   只剩一个预设就不存在这个并发。
     "preset": [
         {
             "name": "日常一条龙",
-            "description": "一把跑完，不用你盯着换任务：\n\n**启动游戏 → 领商店礼包 →（自动战斗 + 部落捐赠）× 跑几轮 → 退出游戏。**\n\n· 「启动游戏」和「领商店礼包」**只做一次**，不在循环里；\n· 「日常循环」任务负责**一轮** = 打几局 + 捐一次 —— **跑几轮用它的「重复次数」控件设置**；\n· 最后的「退出游戏」**把游戏关掉**。\n\n想只跑某一步的话，用任务列表里那几个单项任务（自动战斗、部落捐赠就是单跑用的）。",
-            "task": [
-                {
-                    "name": "启动游戏",
-                    "enabled": true
-                },
-                {
-                    "name": "领商店礼包",
-                    "enabled": true
-                },
-                {
-                    "name": "日常循环",
-                    "enabled": true
-                },
-                {
-                    "name": "退出游戏",
-                    "enabled": true
-                }
-            ]
-        },
-        {
-            "name": "日常任务（不含对战）",
-            "description": "先把游戏准备好，再领商店礼包 + 部落捐赠，各跑一遍，跑完自动回主界面。不打对战、不关游戏。",
+            "description": "一个预设跑完日常，不用切换：\n\n**启动游戏 → 领商店礼包 →（自动战斗 + 部落捐赠）× 跑几轮 → 退出游戏。**\n\n· 「启动游戏」「领商店礼包」**只做一次**，不在循环里；\n· **真正在跑的是「日常循环」**：一轮 = 打几局 + 捐一次，**跑几轮用它自己的「重复次数」控件设**；\n· 「自动战斗」「部落捐赠」列在这里但**默认不打勾** —— 它们的内容已被「日常循环」包含，勾上会重复；要单独加练时再手动勾；\n· 最后的「退出游戏」**把游戏关掉**。",
             "task": [
                 {
                     "name": "启动游戏",
@@ -346,6 +664,18 @@
                 },
                 {
                     "name": "部落捐赠",
+                    "enabled": false
+                },
+                {
+                    "name": "自动战斗",
+                    "enabled": false
+                },
+                {
+                    "name": "日常循环",
+                    "enabled": true
+                },
+                {
+                    "name": "退出游戏",
                     "enabled": true
                 }
             ]

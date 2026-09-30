@@ -1,0 +1,45 @@
+name: check
+
+# 提交/PR 时自动检查 —— 补上「纯 JSON 化之后没有任何自动拦截」那个缺口。
+# 两类问题都能在合并前挡住：
+#   · 引用完整性：模板图写错路径、next 指向不存在的节点、entry 拼错、选项覆盖不存在的节点
+#     —— 这些**不报错、只静默失效**，以前只能人工发现
+#   · 字段合法性：字段名拼错、类型不对（官方 JSON Schema）
+on:
+  push:
+    branches:
+      - "**"
+    paths:
+      - ".github/workflows/check.yml"
+      - "assets/**"
+      - "tools/ci/**"
+      - "deps/**"
+  pull_request:
+    branches:
+      - "**"
+    paths:
+      - ".github/workflows/check.yml"
+      - "assets/**"
+      - "tools/ci/**"
+      - "deps/**"
+  workflow_dispatch:
+
+jobs:
+  resource:
+    name: 校验资源
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 安装依赖
+        run: python -m pip install --upgrade pip jsonschema referencing
+
+      - name: 引用完整性（模板 / 节点 / entry / pipeline_override）
+        run: python tools/ci/validate.py
+
+      - name: 字段合法性（官方 JSON Schema）
+        run: python tools/ci/check_schema.py

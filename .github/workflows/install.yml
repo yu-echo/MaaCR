@@ -15,7 +15,7 @@ on:
     branches:
       - "**"
     paths:
-      - ".github/workflows/install.yml"
+      - ".github/**"
       - "assets/**"
       - "docs/**"
       - "tools/ci/**"
@@ -25,7 +25,7 @@ on:
     branches:
       - "**"
     paths:
-      - ".github/workflows/install.yml"
+      - ".github/**"
       - "assets/**"
       - "docs/**"
       - "tools/ci/**"

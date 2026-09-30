@@ -10,7 +10,7 @@ on:
     branches:
       - "**"
     paths:
-      - ".github/workflows/check.yml"
+      - ".github/**"
       - "assets/**"
       - "tools/ci/**"
       - "deps/**"
@@ -18,7 +18,7 @@ on:
     branches:
       - "**"
     paths:
-      - ".github/workflows/check.yml"
+      - ".github/**"
       - "assets/**"
       - "tools/ci/**"
       - "deps/**"

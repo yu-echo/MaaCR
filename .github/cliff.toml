@@ -61,9 +61,9 @@ body = """
 {%- endif %}
 """
 
+# ⚠️ footer 保持为空：这里用到 `previous.version` 之类的变量在 `--latest` 模式下
+#    未必有定义，渲染会直接失败（第一次跑就踩了）。MaaTOT 那份也是空的。
 footer = """
-
-**完整变更**：{{ remote.github.owner }}/{{ remote.github.repo }}/compare/{{ previous.version }}...{{ version }}
 """
 
 [git]

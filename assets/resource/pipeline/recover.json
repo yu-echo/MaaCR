@@ -77,9 +77,9 @@
                                 //    模板保持一致，两边用同一批卡面）。
                                 "template": [
                                     "cards/哥布林飞桶.png", "cards/飞龙宝宝.png",
-                                    "cards/气球兵.png", "cards/武士.png",
-                                    "cards/亡灵.png", "cards/狂暴樵夫.png",
-                                    "cards/火精灵.png", "cards/骷髅兵.png",
+                                    "cards/气球兵.png", "cards/浪人.png",
+                                    "cards/亡灵.png", "cards/野猪骑士.png",
+                                    "cards/烈焰精灵.png", "cards/骷髅兵.png",
                                     "cards/哥布林飞桶-进化.png", "cards/飞龙宝宝-进化.png"
                                 ],
                                 "roi": [108, 1011, 712, 1267],

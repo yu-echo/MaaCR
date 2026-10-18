@@ -47,10 +47,10 @@
                                     "cards/哥布林飞桶.png",
                                     "cards/飞龙宝宝.png",
                                     "cards/气球兵.png",
-                                    "cards/武士.png",
+                                    "cards/浪人.png",
                                     "cards/亡灵.png",
-                                    "cards/狂暴樵夫.png",
-                                    "cards/火精灵.png",
+                                    "cards/野猪骑士.png",
+                                    "cards/烈焰精灵.png",
                                     "cards/骷髅兵.png",
                                     "cards/哥布林飞桶-进化.png",
                                     "cards/飞龙宝宝-进化.png"
@@ -91,12 +91,12 @@
         "action": {"type": "DoNothing", "param": {}},
         "next": [
             "出-气球兵",
-            "出-武士",
-            "出-狂暴樵夫",
+            "出-浪人",
+            "出-野猪骑士",
             "出-飞龙宝宝",
             "出-哥布林飞桶",
             "出-亡灵",
-            "出-火精灵",
+            "出-烈焰精灵",
             "出-骷髅兵",
             "对战等待"
         ]
@@ -133,7 +133,7 @@
         "next": ["落点"],
         "on_error": ["对战等待"]
     },
-    "出-武士": {
+    "出-浪人": {
         // ★ 门槛：**圣水 ≥ 这张牌自己的费用（5 费）**才出。
         //   配合 next 按费用从高到低 = 「先出能出的最大牌、余费再补低费」。
         "recognition": {
@@ -143,7 +143,7 @@
                     {
                         "sub_name": "牌",
                         "recognition": "TemplateMatch",
-                        "template": "cards/武士.png",
+                        "template": "cards/浪人.png",
                         "roi": [108, 1011, 712, 1267],
                         "threshold": 0.85
                     },
@@ -167,7 +167,7 @@
         "next": ["落点"],
         "on_error": ["对战等待"]
     },
-    "出-狂暴樵夫": {
+    "出-野猪骑士": {
         // ★ 门槛：**圣水 ≥ 这张牌自己的费用（4 费）**才出。
         //   配合 next 按费用从高到低 = 「先出能出的最大牌、余费再补低费」。
         "recognition": {
@@ -177,7 +177,7 @@
                     {
                         "sub_name": "牌",
                         "recognition": "TemplateMatch",
-                        "template": "cards/狂暴樵夫.png",
+                        "template": "cards/野猪骑士.png",
                         "roi": [108, 1011, 712, 1267],
                         "threshold": 0.85
                     },
@@ -313,7 +313,7 @@
         "next": ["落点-飞桶"],
         "on_error": ["对战等待"]
     },
-    "出-火精灵": {
+    "出-烈焰精灵": {
         // ★ 门槛：**圣水 ≥ 这张牌自己的费用（1 费）**才出。
         //   配合 next 按费用从高到低 = 「先出能出的最大牌、余费再补低费」。
         "recognition": {
@@ -323,7 +323,7 @@
                     {
                         "sub_name": "牌",
                         "recognition": "TemplateMatch",
-                        "template": "cards/火精灵.png",
+                        "template": "cards/烈焰精灵.png",
                         "roi": [108, 1011, 712, 1267],
                         "threshold": 0.85
                     },

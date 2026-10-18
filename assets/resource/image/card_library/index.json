@@ -1,0 +1,903 @@
+{
+ "_meta": {
+  "说明": "卡牌库权威名册。文件名 = {中文名}_{形态}.png（形态 = 普通/觉醒/精英）；未取得游戏内卡名的卡保持 card_{id}.png 纯 id；皇家塔 tower_{id}.png。",
+  "命名规则": {
+   "R1": "name 必须是国服游戏内显示文本（简体中文），以长按卡片气泡/收藏页浮层的卡名为准",
+   "R2": "文件名禁用 \\ / : * ? \" < > |，出现时转全角等价",
+   "R3": "文件名不含空格（sanitize 处理）",
+   "R4": "繁体一律转简体录入（国服口径）；aliases 里可收繁体/俗称",
+   "R5": "文件名 = 中文名 + 形态后缀，不含编号/字母/下划线（用户 2026-10-09 要求）；工具链按名册做 id 映射",
+   "R6": "status != confirmed 的卡不得带中文名后缀（保持纯 card_{id}.png）",
+   "R7": "中文名全局唯一，重名 = 对齐错误，必须停下来人查"
+  },
+  "来源": "known: request_targets/index.json(2026-09-28 实机长按取名) + 跨尺度模板对齐(2026-10-09, 全部一对一, 目检复核) + 收藏页扫描补名(2026-10-15, 145 帧浮层名字条, 逐张目检)"
+ },
+ "cards": {
+  "card_003": {
+   "name": "亡灵大军",
+   "status": "confirmed",
+   "aliases": [
+    "大苍蝇"
+   ],
+   "source": "request_targets card_002.png",
+   "align_score": 0.625
+  },
+  "card_034": {
+   "name": "戈仑石人",
+   "status": "confirmed",
+   "aliases": [
+    "石头",
+    "石头人"
+   ],
+   "source": "request_targets card_025.png",
+   "align_score": 0.793
+  },
+  "card_035": {
+   "name": "雷电巨人",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "request_targets card_058.png",
+   "align_score": 0.737
+  },
+  "card_036": {
+   "name": "皮卡超人",
+   "status": "confirmed",
+   "aliases": [
+    "皮卡"
+   ],
+   "source": "request_targets card_046.png",
+   "align_score": 0.764
+  },
+  "card_037": {
+   "name": "十字连弩",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "request_targets card_010.png",
+   "align_score": 0.699
+  },
+  "card_038": {
+   "name": "哥布林巨人",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "request_targets card_014.png",
+   "align_score": 0.536
+  },
+  "card_039": {
+   "name": "雷电法术",
+   "status": "confirmed",
+   "aliases": [
+    "大电",
+    "大闪",
+    "闪电"
+   ],
+   "source": "request_targets card_059.png",
+   "align_score": 0.765
+  },
+  "card_040": {
+   "name": "骷髅巨人",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "request_targets card_068.png",
+   "align_score": 0.722
+  },
+  "card_041": {
+   "name": "虚空法术",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "request_targets card_050.png",
+   "align_score": 0.741
+  },
+  "card_042": {
+   "name": "加农炮战车",
+   "status": "confirmed",
+   "aliases": [
+    "炮车"
+   ],
+   "source": "request_targets card_009.png",
+   "align_score": 0.805
+  },
+  "card_043": {
+   "name": "飞斧屠夫",
+   "status": "confirmed",
+   "aliases": [
+    "屠夫"
+   ],
+   "source": "request_targets card_063.png",
+   "align_score": 0.811
+  },
+  "card_044": {
+   "name": "巨石投手",
+   "status": "confirmed",
+   "aliases": [
+    "投手"
+   ],
+   "source": "request_targets card_023.png",
+   "align_score": 0.72
+  },
+  "card_045": {
+   "name": "雷电飞龙",
+   "status": "confirmed",
+   "aliases": [
+    "电龙"
+   ],
+   "source": "request_targets card_061.png",
+   "align_score": 0.572
+  },
+  "card_046": {
+   "name": "王子",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "request_targets card_039.png",
+   "align_score": 0.677
+  },
+  "card_048": {
+   "name": "女巫",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "request_targets card_021.png",
+   "align_score": 0.687
+  },
+  "card_049": {
+   "name": "哥布林钻机",
+   "status": "confirmed",
+   "aliases": [
+    "钻机"
+   ],
+   "source": "request_targets card_017.png",
+   "align_score": 0.646
+  },
+  "card_050": {
+   "name": "猎人",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "request_targets card_038.png",
+   "align_score": 0.787
+  },
+  "card_051": {
+   "name": "伤害药水法术",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "request_targets card_004.png",
+   "align_score": 0.725
+  },
+  "card_052": {
+   "name": "符文巨人",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "request_targets card_047.png",
+   "align_score": 0.67
+  },
+  "card_053": {
+   "name": "冰冻法术",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "request_targets card_006.png",
+   "align_score": 0.706
+  },
+  "card_054": {
+   "name": "黑暗王子",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "request_targets card_071.png",
+   "align_score": 0.675
+  },
+  "card_056": {
+   "name": "克隆法术",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "request_targets card_005.png",
+   "align_score": 0.778
+  },
+  "card_057": {
+   "name": "飓风法术",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "request_targets card_062.png",
+   "align_score": 0.721
+  },
+  "card_058": {
+   "name": "藤蔓法术",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "request_targets card_049.png",
+   "align_score": 0.753
+  },
+  "card_060": {
+   "name": "骷髅守卫",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "request_targets card_067.png",
+   "align_score": 0.658
+  },
+  "card_061": {
+   "name": "骷髅军团",
+   "status": "confirmed",
+   "aliases": [
+    "骷髅海"
+   ],
+   "source": "request_targets card_066.png",
+   "align_score": 0.68
+  },
+  "card_062": {
+   "name": "哥布林魔咒",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "request_targets card_018.png",
+   "align_score": 0.594
+  },
+  "card_063": {
+   "name": "狂暴法术",
+   "status": "confirmed",
+   "aliases": [
+    "狂暴",
+    "紫水"
+   ],
+   "source": "request_targets card_037.png",
+   "align_score": 0.791
+  },
+  "card_064": {
+   "name": "攻城炸弹人",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "request_targets card_027.png",
+   "align_score": 0.766
+  },
+  "card_065": {
+   "name": "野蛮人滚筒",
+   "status": "confirmed",
+   "aliases": [
+    "滚筒",
+    "滚木"
+   ],
+   "source": "request_targets card_056.png",
+   "align_score": 0.781
+  },
+  "card_066": {
+   "name": "镜像法术",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "request_targets card_057.png",
+   "align_score": 0.674
+  },
+  "card_068": {
+   "name": "圣水收集器",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "request_targets card_019.png",
+   "align_score": 0.744
+  },
+  "card_069": {
+   "name": "野蛮人小屋",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "request_targets card_054.png",
+   "align_score": 0.695
+  },
+  "card_071": {
+   "name": "皇家野猪",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "request_targets card_045.png",
+   "align_score": 0.656
+  },
+  "card_072": {
+   "name": "地狱之塔",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "request_targets card_020.png",
+   "align_score": 0.843
+  },
+  "card_073": {
+   "name": "法师",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "request_targets card_028.png",
+   "align_score": 0.799
+  },
+  "card_074": {
+   "name": "巨人",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "request_targets card_022.png",
+   "align_score": 0.765
+  },
+  "card_075": {
+   "name": "哥布林爆破手",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "request_targets card_015.png",
+   "align_score": 0.654
+  },
+  "card_076": {
+   "name": "烈焰熔炉",
+   "status": "confirmed",
+   "aliases": [
+    "熔炉"
+   ],
+   "source": "request_targets card_033.png",
+   "align_score": 0.597
+  },
+  "card_077": {
+   "name": "电击车小队",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "request_targets card_041.png",
+   "align_score": 0.795
+  },
+  "card_078": {
+   "name": "战斗天使",
+   "status": "confirmed",
+   "aliases": [
+    "天使"
+   ],
+   "source": "request_targets card_026.png",
+   "align_score": 0.703
+  },
+  "card_079": {
+   "name": "亡灵巨人",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "request_targets card_003.png",
+   "align_score": 0.708
+  },
+  "card_080": {
+   "name": "飞行器",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "request_targets card_064.png",
+   "align_score": 0.758
+  },
+  "card_082": {
+   "name": "炸弹塔",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "request_targets card_032.png",
+   "align_score": 0.731
+  },
+  "card_083": {
+   "name": "野蛮人攻城槌",
+   "status": "confirmed",
+   "aliases": [
+    "攻城槌",
+    "羊"
+   ],
+   "source": "request_targets card_055.png",
+   "align_score": 0.749
+  },
+  "card_085": {
+   "name": "火球",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "request_targets card_030.png",
+   "align_score": 0.867
+  },
+  "card_086": {
+   "name": "哥布林牢笼",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "request_targets card_016.png",
+   "align_score": 0.629
+  },
+  "card_087": {
+   "name": "哥布林小屋",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "request_targets card_013.png",
+   "align_score": 0.617
+  },
+  "card_089": {
+   "name": "火枪手",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "request_targets card_029.png",
+   "align_score": 0.668
+  },
+  "card_097": {
+   "name": "皇家卫队",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "request_targets card_042.png",
+   "align_score": 0.589
+  },
+  "card_099": {
+   "name": "皇家巨人",
+   "status": "confirmed",
+   "aliases": [
+    "家驹"
+   ],
+   "source": "request_targets card_043.png",
+   "align_score": 0.787
+  },
+  "card_100": {
+   "name": "绿林团伙",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "request_targets card_048.png",
+   "align_score": 0.704
+  },
+  "card_101": {
+   "name": "野蛮人",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "request_targets card_053.png",
+   "align_score": 0.714
+  },
+  "card_102": {
+   "name": "特斯拉电磁塔",
+   "status": "confirmed",
+   "aliases": [
+    "特斯拉"
+   ],
+   "source": "request_targets card_035.png",
+   "align_score": 0.71
+  },
+  "card_103": {
+   "name": "迫击炮",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "request_targets card_052.png",
+   "align_score": 0.74
+  },
+  "card_104": {
+   "name": "骷髅飞龙",
+   "status": "confirmed",
+   "aliases": [
+    "骨龙"
+   ],
+   "source": "request_targets card_070.png",
+   "align_score": 0.61
+  },
+  "card_105": {
+   "name": "皇家速递",
+   "status": "confirmed",
+   "aliases": [
+    "速递"
+   ],
+   "source": "request_targets card_044.png",
+   "align_score": 0.798
+  },
+  "card_106": {
+   "name": "烟花炮手",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "request_targets card_034.png",
+   "align_score": 0.741
+  },
+  "card_107": {
+   "name": "骷髅气球",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "request_targets card_069.png",
+   "align_score": 0.687
+  },
+  "card_108": {
+   "name": "哥布林团伙",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "request_targets card_012.png",
+   "align_score": 0.635
+  },
+  "card_109": {
+   "name": "加农炮",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "request_targets card_008.png",
+   "align_score": 0.821
+  },
+  "card_110": {
+   "name": "万箭齐发",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "request_targets card_001.png",
+   "align_score": 0.664
+  },
+  "card_111": {
+   "name": "弓箭手",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "request_targets card_024.png",
+   "align_score": 0.733
+  },
+  "card_112": {
+   "name": "骑士",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "request_targets card_065.png",
+   "align_score": 0.685
+  },
+  "card_113": {
+   "name": "狂战士",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "request_targets card_036.png",
+   "align_score": 0.687
+  },
+  "card_115": {
+   "name": "电击法术",
+   "status": "confirmed",
+   "aliases": [
+    "小电",
+    "小闪"
+   ],
+   "source": "request_targets card_040.png",
+   "align_score": 0.589
+  },
+  "card_116": {
+   "name": "蝙蝠",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "request_targets card_051.png",
+   "align_score": 0.649
+  },
+  "card_117": {
+   "name": "炸弹兵",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "request_targets card_031.png",
+   "align_score": 0.742
+  },
+  "card_119": {
+   "name": "哥布林",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "request_targets card_011.png",
+   "align_score": 0.725
+  },
+  "card_120": {
+   "name": "冰雪精灵",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "request_targets card_007.png",
+   "align_score": 0.786
+  },
+  "card_121": {
+   "name": "雷电精灵",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "request_targets card_060.png",
+   "align_score": 0.75
+  },
+  "card_001": {
+   "name": "寒冰法师",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "collection scan 2026-10-15 (cf3_123)"
+  },
+  "card_002": {
+   "name": "重甲亡灵",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "collection scan 2026-10-15 (cf3_024)"
+  },
+  "card_004": {
+   "name": "亡灵",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "collection scan 2026-10-15 (cf3_009)"
+  },
+  "card_005": {
+   "name": "刺客头领",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "collection scan 2026-10-15 (cf3_130)"
+  },
+  "card_006": {
+   "name": "科学怪哥布林",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "collection scan 2026-10-15 (cf3_001)"
+  },
+  "card_007": {
+   "name": "盖世武僧",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "collection scan 2026-10-15 (cf3_095)"
+  },
+  "card_008": {
+   "name": "弓箭女皇",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "collection scan 2026-10-15 (cf3_125)"
+  },
+  "card_009": {
+   "name": "威猛矿工",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "collection scan 2026-10-15 (cf3_117)"
+  },
+  "card_010": {
+   "name": "黄金圣骑",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "collection scan 2026-10-15 (cf3_126)"
+  },
+  "card_011": {
+   "name": "骷髅帝王",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "collection scan 2026-10-15 (cf3_127)"
+  },
+  "card_012": {
+   "name": "小王子",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "collection scan 2026-10-15 (cf3_119)"
+  },
+  "card_013": {
+   "name": "熔岩猎犬",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "collection scan 2026-10-15 (cf3_094)"
+  },
+  "card_014": {
+   "name": "超级骑士",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "collection scan 2026-10-15 (cf3_101)"
+  },
+  "card_015": {
+   "name": "精灵女皇",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "collection scan 2026-10-15 (cf3_121)"
+  },
+  "card_016": {
+   "name": "电磁炮",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "collection scan 2026-10-15 (cf3_071)"
+  },
+  "card_017": {
+   "name": "哥布林机甲",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "collection scan 2026-10-15 (cf3_055)"
+  },
+  "card_018": {
+   "name": "浪人",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "collection scan 2026-10-15 (cf3_096)"
+  },
+  "card_019": {
+   "name": "骷髅召唤",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "collection scan 2026-10-15 (cf3_118)"
+  },
+  "card_020": {
+   "name": "蛮羊骑士",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "collection scan 2026-10-15 (cf3_090)"
+  },
+  "card_021": {
+   "name": "女巫婆婆",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "collection scan 2026-10-15 (cf3_091)"
+  },
+  "card_022": {
+   "name": "暗夜女巫",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "collection scan 2026-10-15 (cf3_131)"
+  },
+  "card_023": {
+   "name": "狂暴樵夫",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "collection scan 2026-10-15 (cf3_087)"
+  },
+  "card_024": {
+   "name": "神箭游侠",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "collection scan 2026-10-15 (cf3_062)"
+  },
+  "card_025": {
+   "name": "凤凰",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "collection scan 2026-10-15 (cf3_142)"
+  },
+  "card_026": {
+   "name": "闪电法师",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "collection scan 2026-10-15 (cf3_003)"
+  },
+  "card_027": {
+   "name": "地狱飞龙",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "collection scan 2026-10-15 (cf3_107)"
+  },
+  "card_028": {
+   "name": "渔夫",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "collection scan 2026-10-15 (cf3_114)"
+  },
+  "card_029": {
+   "name": "幻影刺客",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "collection scan 2026-10-15 (cf3_128)"
+  },
+  "card_030": {
+   "name": "皇家幽灵",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "collection scan 2026-10-15 (cf3_021)"
+  },
+  "card_031": {
+   "name": "掘地矿工",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "collection scan 2026-10-15 (cf3_102)"
+  },
+  "card_032": {
+   "name": "三公主",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "collection scan 2026-10-15 (cf3_066)"
+  },
+  "card_033": {
+   "name": "滚木",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "collection scan 2026-10-15 (cf3_031)"
+  },
+  "card_047": {
+   "name": "气球兵",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "collection scan 2026-10-15 (cf3_005)"
+  },
+  "card_055": {
+   "name": "飞龙宝宝",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "collection scan 2026-10-15 (cf3_012)"
+  },
+  "card_059": {
+   "name": "哥布林飞桶",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "collection scan 2026-10-15 (cf3_007)"
+  },
+  "card_067": {
+   "name": "三个火枪手",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "collection scan 2026-10-15 (cf3_141)"
+  },
+  "card_070": {
+   "name": "火箭",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "collection scan 2026-10-15 (cf3_137)"
+  },
+  "card_081": {
+   "name": "野猪骑士",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "collection scan 2026-10-15 (cf3_008)"
+  },
+  "card_084": {
+   "name": "瓦基丽武神",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "collection scan 2026-10-15 (cf3_013)"
+  },
+  "card_088": {
+   "name": "迷你皮卡",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "collection scan 2026-10-15 (cf3_016)"
+  },
+  "card_090": {
+   "name": "圣水戈仑",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "collection scan 2026-10-15 (cf3_064)"
+  },
+  "card_091": {
+   "name": "地震法术",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "collection scan 2026-10-15 (cf3_030)"
+  },
+  "card_092": {
+   "name": "吹箭哥布林",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "collection scan 2026-10-15 (cf3_042)"
+  },
+  "card_093": {
+   "name": "骷髅墓碑",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "collection scan 2026-10-15 (cf3_048)"
+  },
+  "card_094": {
+   "name": "可疑草丛",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "collection scan 2026-10-15 (cf3_109)"
+  },
+  "card_095": {
+   "name": "戈仑冰人",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "collection scan 2026-10-15 (cf3_020)"
+  },
+  "card_096": {
+   "name": "治疗精灵",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "collection scan 2026-10-15 (cf3_070)"
+  },
+  "card_098": {
+   "name": "野蛮人精锐",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "collection scan 2026-10-15 (cf3_037)"
+  },
+  "card_114": {
+   "name": "大雪球",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "collection scan 2026-10-15 (cf3_017)"
+  },
+  "card_118": {
+   "name": "哥布林投矛手",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "collection scan 2026-10-15 (cf3_018)"
+  },
+  "card_122": {
+   "name": "烈焰精灵",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "collection scan 2026-10-15 (cf3_014)"
+  },
+  "card_123": {
+   "name": "骷髅兵",
+   "status": "confirmed",
+   "aliases": [],
+   "source": "collection scan 2026-10-15 (cf3_010)"
+  }
+ },
+ "towers": {
+  "tower_001": {
+   "name": null,
+   "guess": "公主塔",
+   "status": "pending",
+   "aliases": [],
+   "source": "目检推测，待实机核对"
+  },
+  "tower_002": {
+   "name": null,
+   "guess": "皇家厨师",
+   "status": "pending",
+   "aliases": [],
+   "source": "目检推测，待实机核对"
+  },
+  "tower_003": {
+   "name": null,
+   "guess": "炮手",
+   "status": "pending",
+   "aliases": [],
+   "source": "目检推测，待实机核对"
+  },
+  "tower_004": {
+   "name": null,
+   "guess": "匕首公爵",
+   "status": "pending",
+   "aliases": [],
+   "source": "目检推测，待实机核对"
+  }
+ }
+}

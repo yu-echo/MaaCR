@@ -368,7 +368,7 @@
                     {
                         "sub_name": "牌",
                         "recognition": "TemplateMatch",
-                        "template": "cards_lib/骷髅兵.png",
+                        "template": ["cards_lib/骷髅兵.png", "cards_lib/骷髅兵-进化.png"],
                         "roi": [108, 1011, 712, 1267],
                         "threshold": 0.90
                     },

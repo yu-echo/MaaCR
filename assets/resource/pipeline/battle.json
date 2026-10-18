@@ -15,6 +15,13 @@
     //    连槽位都不用算。**优先级 = next 的顺序**（协议：按顺序识别，只执行第一个命中的）。
     //    8 个节点覆盖 10 张模板（两张精英形态并进同节点的 template 列表）。
     //
+    // ④ 模板有两个来源（2026-10-18「卡组从卡库调图」实测后定的）：
+    //    `cards_lib/` = 从 card_library 卡面按实战取景自动生成（tools/gen_cards_from_lib.py），
+    //       阈值 **0.72**（离线 1126 帧：自匹配最低 0.78~0.84、别的牌 ≤0.29；实机一局 0.796~0.807）；
+    //    `cards/`     = 从实战帧手裁（库图与手牌不是同一张画的那几张只能这样），阈值 0.85。
+    //    ⚠️ 别把 gate「对战中」也降到 0.72：那道门还兼着「排除非战斗界面」，
+    //       所以它继续只用实战模板 + 0.85。
+    //
     // ③ 落点：「塔破就放敌方半场深位」用 ColorMatch + inverse 判断血条消失。
 
     // ——— 门：确认「确实在对战画面」———
@@ -143,9 +150,9 @@
                     {
                         "sub_name": "牌",
                         "recognition": "TemplateMatch",
-                        "template": "cards/浪人.png",
+                        "template": "cards_lib/浪人.png",
                         "roi": [108, 1011, 712, 1267],
-                        "threshold": 0.85
+                        "threshold": 0.72
                     },
                     {
                         // 圣水条第 5 费位置（洋红，与「出牌-圣水够」同一套判据）
@@ -177,9 +184,9 @@
                     {
                         "sub_name": "牌",
                         "recognition": "TemplateMatch",
-                        "template": "cards/野猪骑士.png",
+                        "template": "cards_lib/野猪骑士.png",
                         "roi": [108, 1011, 712, 1267],
-                        "threshold": 0.85
+                        "threshold": 0.72
                     },
                     {
                         // 圣水条第 4 费位置（洋红，与「出牌-圣水够」同一套判据）
@@ -251,9 +258,9 @@
                     {
                         "sub_name": "牌",
                         "recognition": "TemplateMatch",
-                        "template": "cards/亡灵.png",
+                        "template": "cards_lib/亡灵.png",
                         "roi": [108, 1011, 712, 1267],
-                        "threshold": 0.85
+                        "threshold": 0.72
                     },
                     {
                         // 圣水条第 3 费位置（洋红，与「出牌-圣水够」同一套判据）
@@ -323,9 +330,9 @@
                     {
                         "sub_name": "牌",
                         "recognition": "TemplateMatch",
-                        "template": "cards/烈焰精灵.png",
+                        "template": "cards_lib/烈焰精灵.png",
                         "roi": [108, 1011, 712, 1267],
-                        "threshold": 0.85
+                        "threshold": 0.72
                     },
                     {
                         // 圣水条第 1 费位置（洋红，与「出牌-圣水够」同一套判据）
@@ -357,9 +364,9 @@
                     {
                         "sub_name": "牌",
                         "recognition": "TemplateMatch",
-                        "template": "cards/骷髅兵.png",
+                        "template": "cards_lib/骷髅兵.png",
                         "roi": [108, 1011, 712, 1267],
-                        "threshold": 0.85
+                        "threshold": 0.72
                     },
                     {
                         // 圣水条第 1 费位置（洋红，与「出牌-圣水够」同一套判据）

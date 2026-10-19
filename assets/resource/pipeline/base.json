@@ -73,7 +73,20 @@
             "param": {
                 "template": [
                     "clanwar/chest_purple.png",
-                    "clanwar/reward_star.png"
+                    "clanwar/reward_star.png",
+                    // ★ 2026-10-19 补：蓝宝箱「点击打开」页 / 「拼图」解锁页。
+                    //   老毛病复发 —— 上面早就写了「蓝宝箱点中间能推进」，判据却一直是
+                    //   紫金宝箱+金星两个，实测在这张页面上只有 0.391 / 0.699，
+                    //   **从来没命中过**。后果：每打完一局都死在这儿
+                    //   （19:50:22 / 19:50:32 两帧 → 战后连失败两次 → error handling
+                    //    loop detected → 日常循环判失败，奖励没领就被踢下线）。
+                    //   两个模板都从实机帧直接裁，页面是静止的（两帧间隔 10s 逐像素不变）：
+                    //     reveal_click_open.png 正 0.9144 / 1.0000，250 帧负样本最高 0.3045
+                    //     reveal_puzzle.png     正 1.0000 / 1.0000，250 帧负样本最高 0.3666
+                    //   拼图页是开完宝箱必出的第二屏：2026-10-19 19:45 启动阶段卡满 3 分钟
+                    //   → 清障链 → 环境未就绪 → 「启动游戏」判失败，就是它。
+                    "anchors/reveal_click_open.png",
+                    "anchors/reveal_puzzle.png"
                 ],
                 "threshold": 0.8
             }

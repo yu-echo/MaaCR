@@ -48,6 +48,14 @@
                         }
                     },
                     {
+                        // ⚠️ 2026-10-19 修 roi 口径：这里原来写 [108, 1011, 712, 1267]，
+                        //   那是「左上角 + 右下角」的记法，但 MaaFramework 的 roi 是
+                        //   **[x, y, w, h]** ⇒ x2=820 / y2=2278 双双越界，日志里每帧刷
+                        //   `correct_roi roi is out of range [image.size()=[720,1280]]`。
+                        //   实际是按裁进画面后的 [108,1011,612,269] 在搜（所以还能出牌，
+                        //   只是白刷日志 + 搜索区偏大一截、更慢）。
+                        //   正确写法：x 108..712 / y 1011..1267 ⇒ w=604, h=256。
+                        //   recover.json 的「未知界面处理」里有同一份 roi，也一并改了。
                         "sub_name": "手牌",
                         "recognition": {
                             "type": "TemplateMatch",
@@ -64,7 +72,7 @@
                                     "cards/哥布林飞桶-进化.png",
                                     "cards/飞龙宝宝-进化.png"
                                 ],
-                                "roi": [108, 1011, 712, 1267],
+                                "roi": [108, 1011, 604, 256],
                                 "threshold": 0.85
                             }
                         }
@@ -120,7 +128,7 @@
                         "sub_name": "牌",
                         "recognition": "TemplateMatch",
                         "template": "cards/气球兵.png",
-                        "roi": [108, 1011, 712, 1267],
+                        "roi": [108, 1011, 604, 256],
                         "threshold": 0.85
                     },
                     {
@@ -153,7 +161,7 @@
                         "sub_name": "牌",
                         "recognition": "TemplateMatch",
                         "template": "cards_lib/浪人.png",
-                        "roi": [108, 1011, 712, 1267],
+                        "roi": [108, 1011, 604, 256],
                         "threshold": 0.90
                     },
                     {
@@ -187,7 +195,7 @@
                         "sub_name": "牌",
                         "recognition": "TemplateMatch",
                         "template": "cards_lib/野猪骑士.png",
-                        "roi": [108, 1011, 712, 1267],
+                        "roi": [108, 1011, 604, 256],
                         "threshold": 0.90
                     },
                     {
@@ -225,7 +233,7 @@
                         "sub_name": "牌",
                         "recognition": "TemplateMatch",
                         "template": ["cards/飞龙宝宝.png", "cards/飞龙宝宝-进化.png"],
-                        "roi": [108, 1011, 712, 1267],
+                        "roi": [108, 1011, 604, 256],
                         "threshold": 0.85
                     },
                     {
@@ -263,7 +271,7 @@
                         "sub_name": "牌",
                         "recognition": "TemplateMatch",
                         "template": "cards_lib/亡灵.png",
-                        "roi": [108, 1011, 712, 1267],
+                        "roi": [108, 1011, 604, 256],
                         "threshold": 0.90
                     },
                     {
@@ -301,7 +309,7 @@
                         "sub_name": "牌",
                         "recognition": "TemplateMatch",
                         "template": ["cards/哥布林飞桶.png", "cards/哥布林飞桶-进化.png"],
-                        "roi": [108, 1011, 712, 1267],
+                        "roi": [108, 1011, 604, 256],
                         "threshold": 0.85
                     },
                     {
@@ -335,7 +343,7 @@
                         "sub_name": "牌",
                         "recognition": "TemplateMatch",
                         "template": "cards_lib/烈焰精灵.png",
-                        "roi": [108, 1011, 712, 1267],
+                        "roi": [108, 1011, 604, 256],
                         "threshold": 0.90
                     },
                     {
@@ -369,7 +377,7 @@
                         "sub_name": "牌",
                         "recognition": "TemplateMatch",
                         "template": ["cards_lib/骷髅兵.png", "cards_lib/骷髅兵-进化.png"],
-                        "roi": [108, 1011, 712, 1267],
+                        "roi": [108, 1011, 604, 256],
                         "threshold": 0.90
                     },
                     {

@@ -578,7 +578,7 @@
         "action": {"type": "StopTask", "param": {}},
         "focus": {
             "Node.Action.Starting": {
-                "content": "**搜不到对手**（排队超过 1 分钟），已点取消、跳过部落战。",
+                "content": "**搜不到对手**（排队满 3 分钟），已点取消、跳过部落战。",
                 "display": ["log", "notification"]
             }
         }

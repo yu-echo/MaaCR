@@ -856,7 +856,8 @@
         "recognition": {
             "type": "TemplateMatch",
             "param": {
-                "template": "nav/battle.png",
+                // 2026-11-02：对战的导航图标改回「交叉双剑」了，两张都认（见 base.json 回主界面注释）
+                "template": ["nav/battle.png", "nav/battle_swords.png"],
                 "roi": [0, 1140, 720, 140],
                 "threshold": 0.6
             }

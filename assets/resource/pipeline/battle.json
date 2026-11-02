@@ -43,7 +43,14 @@
                                 "method": 40,
                                 "lower": [138, 70, 170],
                                 "upper": [175, 255, 255],
-                                "count": 50
+                                // ★ 2026-11-02：阈值 50 → 35。
+                                //   这个采样点在圣水条最左端，满格时被「10」的白色大字压住，
+                                //   实测只剩 48~58 个紫色像素（其他格子 160~179）——
+                                //   335 帧里圣水满格的 15 帧只有 47% 能过 50，正是最该出牌的时候在空转。
+                                //   实测各档位：圣水 0 → 0（仍不过，不会误判）
+                                //              圣水 1 → 109，5~8 → 60~138，满格 → 48~58
+                                //   改成 35 后三个档位都能正确区分。
+                                "count": 35
                             }
                         }
                     },
@@ -423,14 +430,14 @@
         },
         "inverse": true,
         "action": {"type": "Click", "param": {"target": [177, 291]}},
-        "post_delay": 1200,
+        "post_delay": 800,
         "next": ["对战循环入口"],
         "on_error": ["落点-桥头"]
     },
     "落点-桥头": {
         "recognition": {"type": "DirectHit", "param": {}},
         "action": {"type": "Click", "param": {"target": [172, 590]}},
-        "post_delay": 1200,
+        "post_delay": 800,
         "next": ["对战循环入口"]
     },
     // ——— 飞桶专用落点（只有 `出-绿哥布林` 走这里）———
@@ -458,14 +465,14 @@
         },
         "inverse": true,
         "action": {"type": "Click", "param": {"target": [421, 163]}},
-        "post_delay": 1200,
+        "post_delay": 800,
         "next": ["对战循环入口"],
         "on_error": ["落点-飞桶-一塔"]
     },
     "落点-飞桶-一塔": {
         "recognition": {"type": "DirectHit", "param": {}},
         "action": {"type": "Click", "param": {"target": [187, 255]}},
-        "post_delay": 1200,
+        "post_delay": 800,
         "next": ["对战循环入口"]
     },
     // 没有可出的牌（圣水不够 / 都在冷却）时的落脚点：等一下回循环重判。
